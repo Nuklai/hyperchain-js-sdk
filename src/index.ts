@@ -6,6 +6,7 @@ import { Transfer } from './actions/transfer'
 import { Auth } from './auth/auth'
 import { BLS } from './auth/bls'
 import { ED25519 } from './auth/ed25519'
+import { ActionRegistry, AuthRegistry } from './chain'
 import { TypeParser } from './codec/typeParser'
 import { NodeConfig } from './config'
 import {
@@ -33,11 +34,8 @@ export class HyperchainSDK {
   rpcService: RpcService
 
   // Registry
-  actionRegistry: TypeParser<Action, boolean> = new TypeParser<
-    Action,
-    boolean
-  >()
-  authRegistry: TypeParser<Auth, boolean> = new TypeParser<Auth, boolean>()
+  actionRegistry: ActionRegistry = new TypeParser<Action, boolean>()
+  authRegistry: AuthRegistry = new TypeParser<Auth, boolean>()
 
   constructor(nodeConfig?: Partial<NodeConfig>) {
     const defaultSDKConfig: NodeConfig = {
