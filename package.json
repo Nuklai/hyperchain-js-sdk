@@ -1,8 +1,9 @@
 {
   "name": "@nuklai/hyperchain-sdk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A JavaScript SDK for interacting with hyperchains providing modular services for HyperVM",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "private": false,
   "files": [
