@@ -1,23 +1,29 @@
 {
   "name": "@nuklai/hyperchain-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A JavaScript SDK for interacting with hyperchains providing modular services for HyperVM",
   "main": "index.js",
   "type": "module",
   "private": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
   "scripts": {
-    "build": "node build.js",
+    "build": "tsc && node build.js",
     "test": "jest"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Nuklai/hyperchain-js-sdk.git"
+    "url": "git+https://github.com/Nuklai/nuklai-js-sdk.git"
   },
   "keywords": [
     "blockchain",
-    "HyperSDK",
+    "Nuklai",
     "HyperVM",
-    "hyperchain",
+    "NuklaiVM",
     "cryptocurrency",
     "API",
     "Avalanche"
@@ -25,9 +31,9 @@
   "author": "Kiran Pachhai <kiran.pachhai@nukl.ai>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Nuklai/hyperchain-js-sdk/issues"
+    "url": "https://github.com/Nuklai/nuklai-js-sdk/issues"
   },
-  "homepage": "https://github.com/Nuklai/hyperchain-js-sdk#readme",
+  "homepage": "https://github.com/Nuklai/nuklai-js-sdk#readme",
   "devDependencies": {
     "@types/jest": "^29.0.0",
     "@types/node": "^20.12.10",
