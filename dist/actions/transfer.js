@@ -3,10 +3,10 @@
 // See the file LICENSE for licensing terms.
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Transfer = exports.TransferTxSize = void 0;
+const codec_1 = require("../codec/codec");
 const consts_1 = require("../constants/consts");
 const hypervm_1 = require("../constants/hypervm");
 const address_1 = require("../utils/address");
-const codec_1 = require("../utils/codec");
 const utils_1 = require("../utils/utils");
 exports.TransferTxSize = consts_1.ADDRESS_LEN + consts_1.ID_LEN + consts_1.UINT64_LEN + consts_1.INT_LEN + hypervm_1.MAX_MEMO_SIZE;
 class Transfer {

@@ -1,4 +1,5 @@
 import { bls } from '@avalabs/avalanchejs';
+import { Codec } from '../codec/codec';
 import { Address } from '../utils/address';
 import { Auth, AuthFactory } from './auth';
 export declare const BlsAuthSize: number;
@@ -15,6 +16,7 @@ export declare class BLS implements Auth {
     size(): number;
     toBytes(): Uint8Array;
     static fromBytes(bytes: Uint8Array): [BLS, Error?];
+    static fromBytesCodec(codec: Codec): [BLS, Codec];
     static publicKeyToHex(publicKey: bls.PublicKey): string;
     static hexToPublicKey(hex: string): bls.PublicKey;
 }

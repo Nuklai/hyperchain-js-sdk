@@ -1,3 +1,3 @@
+export * as fees from '../chain/fees'
+export * from '../chain/transaction'
 export * from './baseTx'
-export * as fees from './fees'
-export * from './transaction'

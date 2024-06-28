@@ -1,6 +1,6 @@
 import { Id } from '@avalabs/avalanchejs';
+import { Codec } from '../codec/codec';
 import { Address } from '../utils/address';
-import { Codec } from '../utils/codec';
 import { Action } from './action';
 export declare const TransferTxSize: number;
 export declare class Transfer implements Action {

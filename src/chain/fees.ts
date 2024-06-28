@@ -7,7 +7,7 @@ import { AuthFactory } from '../auth/auth'
 import { Genesis } from '../common/models'
 import { BYTE_LEN, UINT8_LEN } from '../constants/consts'
 import { STORAGE_BALANCE_CHUNKS } from '../constants/hypervm'
-import { BaseTxSize } from './baseTx'
+import { BaseTxSize } from '../transactions/baseTx'
 
 type Dimension = number[]
 const FeeDimensions: number = 5

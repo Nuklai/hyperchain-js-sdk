@@ -2,13 +2,13 @@
 // See the file LICENSE for licensing terms.
 
 import { Id } from '@avalabs/avalanchejs'
+import { Codec } from '../codec/codec'
 import {
   EMPTY_ID,
   ID_LEN,
   MillisecondsPerSecond,
   UINT64_LEN
 } from '../constants/consts'
-import { Codec } from '../utils/codec'
 
 export const BaseTxSize = 2 * UINT64_LEN + ID_LEN
 

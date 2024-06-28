@@ -2,6 +2,7 @@ import { NodeConfig } from './config';
 import { RpcService } from './services/rpc';
 export * as actions from './actions';
 export * as auth from './auth';
+export * as codec from './codec';
 export * as common from './common';
 export * as config from './config';
 export * as consts from './constants';

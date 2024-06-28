@@ -3,8 +3,8 @@
 // See the file LICENSE for licensing terms.
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BaseTx = exports.BaseTxSize = void 0;
+const codec_1 = require("../codec/codec");
 const consts_1 = require("../constants/consts");
-const codec_1 = require("../utils/codec");
 exports.BaseTxSize = 2 * consts_1.UINT64_LEN + consts_1.ID_LEN;
 class BaseTx {
     timestamp;

@@ -1,7 +1,14 @@
 // Copyright (C) 2024, Nuklai. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-import { HyperchainSDK, actions, auth, utils } from './dist/index.js'
+import {
+  HyperchainSDK,
+  actions,
+  auth,
+  codec,
+  consts,
+  utils
+} from './dist/index.js'
 
 const sdk = new HyperchainSDK({
   baseApiUrl: 'http://api-devnet.nuklaivm-dev.net:9650',
@@ -46,8 +53,21 @@ async function testSDK() {
       storageValueWriteUnits: 3,
       validityWindow: 60000
     }
+
+    const actionRegistry = new codec.TypeParser()
+    actionRegistry.register(
+      consts.TRANSFER_ID,
+      actions.Transfer.fromBytesCodec,
+      false
+    )
+    const authRegistry = new codec.TypeParser()
+    authRegistry.register(consts.BLS_ID, auth.BLS.fromBytesCodec, false)
+    authRegistry.register(consts.ED25519_ID, auth.ED25519.fromBytesCodec, false)
+
     const { submit, txSigned, err } = await sdk.rpcService.generateTransaction(
       genesisInfo,
+      actionRegistry,
+      authRegistry,
       [transfer],
       authFactory
     )

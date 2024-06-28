@@ -5,11 +5,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ED25519Factory = exports.ED25519 = exports.Ed25519AuthSize = void 0;
 const ed25519_1 = require("@noble/ed25519");
 const utils_1 = require("@noble/hashes/utils");
+const codec_1 = require("../codec/codec");
 const consts_1 = require("../constants/consts");
 const hypervm_1 = require("../constants/hypervm");
 const ed25519_2 = require("../crypto/ed25519");
 const address_1 = require("../utils/address");
-const codec_1 = require("../utils/codec");
 const hex_1 = require("../utils/hex");
 const utils_2 = require("../utils/utils");
 exports.Ed25519AuthSize = ed25519_2.PUBLIC_KEY_LENGTH + ed25519_2.SIGNATURE_LENGTH;
@@ -54,6 +54,12 @@ class ED25519 {
         const signer = codec.unpackFixedBytes(ed25519_2.PUBLIC_KEY_LENGTH);
         const signature = codec.unpackFixedBytes(ed25519_2.SIGNATURE_LENGTH);
         return [new ED25519(signer, signature), codec.getError()];
+    }
+    static fromBytesCodec(codec) {
+        const codecResult = codec;
+        const signer = codecResult.unpackFixedBytes(ed25519_2.PUBLIC_KEY_LENGTH);
+        const signature = codecResult.unpackFixedBytes(ed25519_2.SIGNATURE_LENGTH);
+        return [new ED25519(signer, signature), codecResult];
     }
     static publicKeyToHex(publicKey) {
         return Buffer.from(publicKey).toString('hex');

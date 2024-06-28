@@ -4,6 +4,9 @@
 import { Id } from '@avalabs/avalanchejs'
 import { Action } from '../actions/action'
 import { AuthFactory } from '../auth/auth'
+import { ActionRegistry, AuthRegistry } from '../chain/dependencies'
+import { estimateUnits, mulSum } from '../chain/fees'
+import { Transaction } from '../chain/transaction'
 import { Api } from '../common/baseApi'
 import {
   Genesis,
@@ -17,8 +20,6 @@ import {
 import { NodeConfig } from '../config'
 import { COREAPI_METHOD_PREFIX, COREAPI_PATH } from '../constants/endpoints'
 import { BaseTx } from '../transactions/baseTx'
-import { estimateUnits, mulSum } from '../transactions/fees'
-import { Transaction } from '../transactions/transaction'
 import { getUnixRMilli } from '../utils/utils'
 
 export class RpcService extends Api {
@@ -65,6 +66,8 @@ export class RpcService extends Api {
 
   async generateTransaction(
     genesisInfo: Genesis,
+    actionRegistry: ActionRegistry,
+    authRegistry: AuthRegistry,
     actions: Action[],
     authFactory: AuthFactory
   ): Promise<{
@@ -100,7 +103,7 @@ export class RpcService extends Api {
       const tx: Transaction = new Transaction(base, actions)
 
       // Sign the transaction
-      const [txSigned, err] = tx.sign(authFactory)
+      const [txSigned, err] = tx.sign(authFactory, actionRegistry, authRegistry)
       if (err) {
         return {
           submit: async () => {

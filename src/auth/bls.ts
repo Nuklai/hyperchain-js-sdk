@@ -4,10 +4,10 @@
 import { bls } from '@avalabs/avalanchejs'
 import { bls12_381 } from '@noble/curves/bls12-381'
 import { randomBytes } from '@noble/hashes/utils'
+import { Codec } from '../codec/codec'
 import { EMPTY_ADDRESS } from '../constants/consts'
 import { BLS_COMPUTE_UNITS, BLS_ID } from '../constants/hypervm'
 import { Address } from '../utils/address'
-import { Codec } from '../utils/codec'
 import { bufferEquals } from '../utils/utils'
 import { Auth, AuthFactory } from './auth'
 
@@ -69,6 +69,17 @@ export class BLS implements Auth {
       codec.unpackFixedBytes(bls.SIGNATURE_LENGTH)
     )
     return [new BLS(signer, signature), codec.getError()]
+  }
+
+  static fromBytesCodec(codec: Codec): [BLS, Codec] {
+    const codecResult = codec
+    const signer = bls.publicKeyFromBytes(
+      codecResult.unpackFixedBytes(bls.PUBLIC_KEY_LENGTH)
+    )
+    const signature = bls.signatureFromBytes(
+      codecResult.unpackFixedBytes(bls.SIGNATURE_LENGTH)
+    )
+    return [new BLS(signer, signature), codecResult]
   }
 
   static publicKeyToHex(publicKey: bls.PublicKey): string {

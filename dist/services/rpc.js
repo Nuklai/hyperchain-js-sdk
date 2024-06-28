@@ -4,11 +4,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RpcService = void 0;
 const avalanchejs_1 = require("@avalabs/avalanchejs");
+const fees_1 = require("../chain/fees");
+const transaction_1 = require("../chain/transaction");
 const baseApi_1 = require("../common/baseApi");
 const endpoints_1 = require("../constants/endpoints");
 const baseTx_1 = require("../transactions/baseTx");
-const fees_1 = require("../transactions/fees");
-const transaction_1 = require("../transactions/transaction");
 const utils_1 = require("../utils/utils");
 class RpcService extends baseApi_1.Api {
     config;
@@ -43,7 +43,7 @@ class RpcService extends baseApi_1.Api {
         const txBase64 = Array.from(tx);
         return this.callRpc('submitTx', { tx: txBase64 });
     }
-    async generateTransaction(genesisInfo, actions, authFactory) {
+    async generateTransaction(genesisInfo, actionRegistry, authRegistry, actions, authFactory) {
         try {
             // Construct the base transaction
             // Set timestamp
@@ -66,7 +66,7 @@ class RpcService extends baseApi_1.Api {
             const base = new baseTx_1.BaseTx(timestamp, chainId, maxFee);
             const tx = new transaction_1.Transaction(base, actions);
             // Sign the transaction
-            const [txSigned, err] = tx.sign(authFactory);
+            const [txSigned, err] = tx.sign(authFactory, actionRegistry, authRegistry);
             if (err) {
                 return {
                     submit: async () => {

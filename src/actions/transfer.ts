@@ -2,6 +2,7 @@
 // See the file LICENSE for licensing terms.
 
 import { Id } from '@avalabs/avalanchejs'
+import { Codec } from '../codec/codec'
 import { ADDRESS_LEN, ID_LEN, INT_LEN, UINT64_LEN } from '../constants/consts'
 import {
   MAX_MEMO_SIZE,
@@ -10,7 +11,6 @@ import {
   TRANSFER_ID
 } from '../constants/hypervm'
 import { Address } from '../utils/address'
-import { Codec } from '../utils/codec'
 import { toAssetID } from '../utils/utils'
 import { Action } from './action'
 

@@ -3,6 +3,7 @@
 
 import { getPublicKey } from '@noble/ed25519'
 import { randomBytes } from '@noble/hashes/utils'
+import { Codec } from '../codec/codec'
 import { EMPTY_ADDRESS } from '../constants/consts'
 import { ED25519_COMPUTE_UNITS, ED25519_ID } from '../constants/hypervm'
 import {
@@ -16,7 +17,6 @@ import {
   verify
 } from '../crypto/ed25519'
 import { Address } from '../utils/address'
-import { Codec } from '../utils/codec'
 import { loadHex, toHex } from '../utils/hex'
 import { bufferEquals } from '../utils/utils'
 import { Auth, AuthFactory } from './auth'
@@ -73,6 +73,13 @@ export class ED25519 implements Auth {
     const signer = codec.unpackFixedBytes(PUBLIC_KEY_LENGTH)
     const signature = codec.unpackFixedBytes(SIGNATURE_LENGTH)
     return [new ED25519(signer, signature), codec.getError()]
+  }
+
+  static fromBytesCodec(codec: Codec): [ED25519, Codec] {
+    const codecResult = codec
+    const signer = codecResult.unpackFixedBytes(PUBLIC_KEY_LENGTH)
+    const signature = codecResult.unpackFixedBytes(SIGNATURE_LENGTH)
+    return [new ED25519(signer, signature), codecResult]
   }
 
   static publicKeyToHex(publicKey: PublicKey): string {

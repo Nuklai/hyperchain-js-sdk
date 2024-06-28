@@ -2,16 +2,13 @@
 // See the file LICENSE for licensing terms.
 
 import { Id } from '@avalabs/avalanchejs'
-import { ED25519, Ed25519AuthSize } from 'auth/ed25519'
 import { Action } from '../actions/action'
-import { Transfer } from '../actions/transfer'
 import { Auth, AuthFactory } from '../auth/auth'
-import { BLS, BlsAuthSize } from '../auth/bls'
+import { Codec } from '../codec/codec'
 import { BYTE_LEN, NETWORK_SIZE_LIMIT } from '../constants/consts'
-import { BLS_ID, ED25519_ID, TRANSFER_ID } from '../constants/hypervm'
-import { Codec } from '../utils/codec'
+import { BaseTx, BaseTxSize } from '../transactions/baseTx'
 import { ToID } from '../utils/hashing'
-import { BaseTx, BaseTxSize } from './baseTx'
+import { ActionRegistry, AuthRegistry } from './dependencies'
 
 export class Transaction {
   public base: BaseTx
@@ -37,7 +34,11 @@ export class Transaction {
     return [codec.toBytes(), codec.getError()]
   }
 
-  sign(factory: AuthFactory): [Transaction, Error?] {
+  sign(
+    factory: AuthFactory,
+    actionRegistry: ActionRegistry,
+    authRegistry: AuthRegistry
+  ): [Transaction, Error?] {
     let [msg, err] = this.calculateDigest()
     if (err) {
       return [this, err]
@@ -48,7 +49,7 @@ export class Transaction {
       return [this, err]
     }
 
-    return Transaction.fromBytes(this.bytes)
+    return Transaction.fromBytes(this.bytes, actionRegistry, authRegistry)
   }
 
   toBytes(): [Uint8Array, Error?] {
@@ -85,7 +86,11 @@ export class Transaction {
     return [codec.toBytes(), codec.getError()]
   }
 
-  static fromBytes(bytes: Uint8Array): [Transaction, Error?] {
+  static fromBytes(
+    bytes: Uint8Array,
+    actionRegistry: ActionRegistry,
+    authRegistry: AuthRegistry
+  ): [Transaction, Error?] {
     let codec = Codec.newReader(bytes, bytes.length)
 
     // Unpack the base transaction
@@ -111,23 +116,18 @@ export class Transaction {
     const actions: Action[] = []
     for (let i = 0; i < numActions; i++) {
       const actionTypeId = codec.unpackByte()
-      let action: Action
-      let codecAction: Codec
-      if (actionTypeId === TRANSFER_ID) {
-        const [actionTransfer, codecActionTransfer] =
-          Transfer.fromBytesCodec(codec)
-        if (codecActionTransfer.getError()) {
-          return [
-            new Transaction(base, []),
-            new Error(`Failed to unpack transfer action: ${err}`)
-          ]
-        }
-        codecAction = codecActionTransfer
-        action = actionTransfer
-      } else {
+      const [fromBytesAction, ok] = actionRegistry.lookupIndex(actionTypeId)
+      if (!ok) {
         return [
           new Transaction(base, []),
           new Error(`Invalid action type: ${actionTypeId}`)
+        ]
+      }
+      const [action, codecAction] = fromBytesAction(codec)
+      if (codecAction.getError()) {
+        return [
+          new Transaction(base, []),
+          new Error(`Failed to unpack action: ${err}`)
         ]
       }
       codec = codecAction
@@ -138,25 +138,21 @@ export class Transaction {
     // Check if there are additional bytes for auth
     if (codec.getOffset() < bytes.length) {
       const authTypeId = codec.unpackByte()
-      let auth: Auth
-      if (authTypeId === BLS_ID) {
-        const authBytes = codec.unpackFixedBytes(BlsAuthSize)
-        ;[auth, err] = BLS.fromBytes(authBytes)
-        if (err) {
-          return [transaction, new Error(`Failed to unpack BLS auth: ${err}`)]
-        }
-      } else if (authTypeId === ED25519_ID) {
-        const authBytes = codec.unpackFixedBytes(Ed25519AuthSize)
-        ;[auth, err] = ED25519.fromBytes(authBytes)
-        if (err) {
-          return [
-            transaction,
-            new Error(`Failed to unpack ED25519 auth: ${err}`)
-          ]
-        }
-      } else {
-        return [transaction, new Error(`Invalid auth type: ${authTypeId}`)]
+      const [fromBytesAuth, ok] = authRegistry.lookupIndex(authTypeId)
+      if (!ok) {
+        return [
+          new Transaction(base, []),
+          new Error(`Invalid auth type: ${authTypeId}`)
+        ]
       }
+      const [auth, codecAuth] = fromBytesAuth(codec)
+      if (codecAuth.getError()) {
+        return [
+          new Transaction(base, []),
+          new Error(`Failed to unpack auth: ${err}`)
+        ]
+      }
+      codec = codecAuth
       transaction.auth = auth
     }
     transaction.bytes = bytes

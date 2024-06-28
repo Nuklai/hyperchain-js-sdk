@@ -6,10 +6,10 @@ exports.BLSFactory = exports.BLS = exports.BlsAuthSize = void 0;
 const avalanchejs_1 = require("@avalabs/avalanchejs");
 const bls12_381_1 = require("@noble/curves/bls12-381");
 const utils_1 = require("@noble/hashes/utils");
+const codec_1 = require("../codec/codec");
 const consts_1 = require("../constants/consts");
 const hypervm_1 = require("../constants/hypervm");
 const address_1 = require("../utils/address");
-const codec_1 = require("../utils/codec");
 const utils_2 = require("../utils/utils");
 exports.BlsAuthSize = avalanchejs_1.bls.PUBLIC_KEY_LENGTH + avalanchejs_1.bls.SIGNATURE_LENGTH;
 class BLS {
@@ -55,6 +55,12 @@ class BLS {
         const signer = avalanchejs_1.bls.publicKeyFromBytes(codec.unpackFixedBytes(avalanchejs_1.bls.PUBLIC_KEY_LENGTH));
         const signature = avalanchejs_1.bls.signatureFromBytes(codec.unpackFixedBytes(avalanchejs_1.bls.SIGNATURE_LENGTH));
         return [new BLS(signer, signature), codec.getError()];
+    }
+    static fromBytesCodec(codec) {
+        const codecResult = codec;
+        const signer = avalanchejs_1.bls.publicKeyFromBytes(codecResult.unpackFixedBytes(avalanchejs_1.bls.PUBLIC_KEY_LENGTH));
+        const signature = avalanchejs_1.bls.signatureFromBytes(codecResult.unpackFixedBytes(avalanchejs_1.bls.SIGNATURE_LENGTH));
+        return [new BLS(signer, signature), codecResult];
     }
     static publicKeyToHex(publicKey) {
         return Buffer.from(avalanchejs_1.bls.publicKeyToBytes(publicKey)).toString('hex');

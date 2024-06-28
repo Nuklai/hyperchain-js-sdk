@@ -6631,58 +6631,13 @@ var Pc = Object.freeze({ __proto__: null, PVMApi: class extends zo {
   return new rc(new qi(tn.fromNative(t.networkID, t.pBlockchainID, I3, x2, w2.memo), Ve.fromString(n), Ve.fromString(s), new pr(a), new pr(i), new pr(o), new pr(c), new pr(u2), new pr(f3), new rr(d2), new rr(l2), new rr(p2), new rr(h2), new mr(ve(m2.toString(16))), new rr(b2), Dr.fromNative(g2)), v2, B2);
 } });
 
-// src/common/rpc.ts
-var JrpcProvider = class {
-  constructor(url) {
-    this.url = url;
-  }
-  reqId = 0;
-  async callMethod(method, parameters, fetchOptions) {
-    const body = {
-      jsonrpc: "2.0",
-      id: this.reqId++,
-      method,
-      params: parameters
-    };
-    const resp = await fetch(this.url, {
-      ...fetchOptions,
-      method: "POST",
-      body: JSON.stringify(body),
-      headers: {
-        "Content-Type": "application/json",
-        ...fetchOptions?.headers
-      }
-    }).then(async (r) => r.json()).then((data) => data);
-    if (resp.error) throw new Error(resp.error.message);
-    return resp.result;
-  }
-  // TODO: Batch RPC call
-};
-
-// src/common/baseApi.ts
-var Api = class {
-  constructor(baseURL = MAINNET_PUBLIC_API_BASE_URL, path = `${HYPERCHAIN_ENDPOINT}/${COREAPI_PATH}`, base, fetchOptions) {
-    this.path = path;
-    this.base = base;
-    this.fetchOptions = fetchOptions;
-    this.rpcProvider = new JrpcProvider(baseURL + path);
-  }
-  rpcProvider;
-  setFetchOptions(options) {
-    this.fetchOptions = options;
-  }
-  getMethodName = (methodName) => {
-    if (!this.base) {
-      return methodName;
-    }
-    return `${this.base}.${methodName}`;
-  };
-  callRpc = (methodName, params) => this.rpcProvider.callMethod(
-    this.getMethodName(methodName),
-    params,
-    this.fetchOptions
-  );
-};
+// src/chain/fees.ts
+var fees_exports = {};
+__export(fees_exports, {
+  estimateUnits: () => estimateUnits,
+  mulSum: () => mulSum
+});
+var import_big_integer = __toESM(require_BigInteger(), 1);
 
 // src/constants/hypervm.ts
 var HRP = "nuklai";
@@ -6841,7 +6796,7 @@ function toAssetID(asset) {
   return asset.toUpperCase() === SYMBOL ? EMPTY_ID : Ve.fromString(asset);
 }
 
-// src/utils/codec.ts
+// src/codec/codec.ts
 var ErrInsufficientLength = new Error(
   "packer has insufficient length for input"
 );
@@ -6849,7 +6804,6 @@ var errNegativeOffset = new Error("negative offset");
 var errInvalidInput = new Error("input does not match expected format");
 var errBadBool = new Error("unexpected value when unpacking bool");
 var errOversized = new Error("size is larger than limit");
-var errFieldNotPopulated = new Error("field is not populated");
 var Codec = class _Codec {
   buffer;
   offset;
@@ -7119,13 +7073,7 @@ var BaseTx = class _BaseTx {
   }
 };
 
-// src/transactions/fees.ts
-var fees_exports = {};
-__export(fees_exports, {
-  estimateUnits: () => estimateUnits,
-  mulSum: () => mulSum
-});
-var import_big_integer = __toESM(require_BigInteger(), 1);
+// src/chain/fees.ts
 var FeeDimensions = 5;
 function mul64(a, b2) {
   return BigInt(a) * BigInt(b2);
@@ -7184,571 +7132,285 @@ function estimateUnits(genesisInfo, actions, authFactory) {
   return [bandwidth, compute, reads, allocates, writes];
 }
 
-// node_modules/@noble/ed25519/index.js
-var P2 = 2n ** 255n - 19n;
-var N2 = 2n ** 252n + 27742317777372353535851937790883648493n;
-var Gx = 0x216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51an;
-var Gy = 0x6666666666666666666666666666666666666666666666666666666666666658n;
-var CURVE = {
-  a: -1n,
-  // where a=-1, d = -(121665/121666) == -(121665 * inv(121666)) mod P
-  d: 37095705934669439343138083508754565189542113879843219016388785533085940283555n,
-  p: P2,
-  n: N2,
-  h: 8,
-  Gx,
-  Gy
-  // field prime, curve (group) order, cofactor
-};
-var err = (m2 = "") => {
-  throw new Error(m2);
-};
-var str = (s) => typeof s === "string";
-var isu8 = (a) => a instanceof Uint8Array || a != null && typeof a === "object" && a.constructor.name === "Uint8Array";
-var au8 = (a, l2) => (
-  // is Uint8Array (of specific length)
-  !isu8(a) || typeof l2 === "number" && l2 > 0 && a.length !== l2 ? err("Uint8Array of valid length expected") : a
-);
-var u8n = (data) => new Uint8Array(data);
-var toU8 = (a, len) => au8(str(a) ? h2b(a) : u8n(au8(a)), len);
-var mod = (a, b2 = P2) => {
-  let r = a % b2;
-  return r >= 0n ? r : b2 + r;
-};
-var isPoint = (p2) => p2 instanceof Point ? p2 : err("Point expected");
-var Point = class _Point {
-  constructor(ex, ey, ez, et2) {
-    this.ex = ex;
-    this.ey = ey;
-    this.ez = ez;
-    this.et = et2;
+// src/chain/transaction.ts
+var Transaction = class _Transaction {
+  base;
+  actions;
+  auth;
+  bytes = new Uint8Array();
+  constructor(base, actions) {
+    this.base = base;
+    this.actions = actions;
   }
-  static fromAffine(p2) {
-    return new _Point(p2.x, p2.y, 1n, mod(p2.x * p2.y));
+  calculateDigest() {
+    const codec = Codec.newWriter(this.size(), NETWORK_SIZE_LIMIT);
+    codec.packFixedBytes(this.base.toBytes());
+    codec.packByte(this.actions.length);
+    this.actions.forEach((action) => {
+      const actionTypeId = action.getTypeId();
+      codec.packByte(actionTypeId);
+      codec.packFixedBytes(action.toBytes());
+    });
+    return [codec.toBytes(), codec.getError()];
   }
-  static fromHex(hex2, zip215 = false) {
-    const { d: d2 } = CURVE;
-    hex2 = toU8(hex2, 32);
-    const normed = hex2.slice();
-    const lastByte = hex2[31];
-    normed[31] = lastByte & ~128;
-    const y2 = b2n_LE(normed);
-    if (zip215 && !(0n <= y2 && y2 < 2n ** 256n))
-      err("bad y coord 1");
-    if (!zip215 && !(0n <= y2 && y2 < P2))
-      err("bad y coord 2");
-    const y22 = mod(y2 * y2);
-    const u2 = mod(y22 - 1n);
-    const v2 = mod(d2 * y22 + 1n);
-    let { isValid, value: x2 } = uvRatio(u2, v2);
-    if (!isValid)
-      err("bad y coordinate 3");
-    const isXOdd = (x2 & 1n) === 1n;
-    const isLastByteOdd = (lastByte & 128) !== 0;
-    if (!zip215 && x2 === 0n && isLastByteOdd)
-      err("bad y coord 3");
-    if (isLastByteOdd !== isXOdd)
-      x2 = mod(-x2);
-    return new _Point(x2, y2, 1n, mod(x2 * y2));
-  }
-  get x() {
-    return this.toAffine().x;
-  }
-  // .x, .y will call expensive toAffine.
-  get y() {
-    return this.toAffine().y;
-  }
-  // Should be used with care.
-  equals(other) {
-    const { ex: X1, ey: Y1, ez: Z1 } = this;
-    const { ex: X2, ey: Y2, ez: Z2 } = isPoint(other);
-    const X1Z2 = mod(X1 * Z2), X2Z1 = mod(X2 * Z1);
-    const Y1Z2 = mod(Y1 * Z2), Y2Z1 = mod(Y2 * Z1);
-    return X1Z2 === X2Z1 && Y1Z2 === Y2Z1;
-  }
-  is0() {
-    return this.equals(I2);
-  }
-  negate() {
-    return new _Point(mod(-this.ex), this.ey, this.ez, mod(-this.et));
-  }
-  double() {
-    const { ex: X1, ey: Y1, ez: Z1 } = this;
-    const { a } = CURVE;
-    const A2 = mod(X1 * X1);
-    const B2 = mod(Y1 * Y1);
-    const C2 = mod(2n * mod(Z1 * Z1));
-    const D2 = mod(a * A2);
-    const x1y1 = X1 + Y1;
-    const E2 = mod(mod(x1y1 * x1y1) - A2 - B2);
-    const G3 = D2 + B2;
-    const F2 = G3 - C2;
-    const H2 = D2 - B2;
-    const X3 = mod(E2 * F2);
-    const Y3 = mod(G3 * H2);
-    const T3 = mod(E2 * H2);
-    const Z3 = mod(F2 * G3);
-    return new _Point(X3, Y3, Z3, T3);
-  }
-  add(other) {
-    const { ex: X1, ey: Y1, ez: Z1, et: T1 } = this;
-    const { ex: X2, ey: Y2, ez: Z2, et: T2 } = isPoint(other);
-    const { a, d: d2 } = CURVE;
-    const A2 = mod(X1 * X2);
-    const B2 = mod(Y1 * Y2);
-    const C2 = mod(T1 * d2 * T2);
-    const D2 = mod(Z1 * Z2);
-    const E2 = mod((X1 + Y1) * (X2 + Y2) - A2 - B2);
-    const F2 = mod(D2 - C2);
-    const G3 = mod(D2 + C2);
-    const H2 = mod(B2 - a * A2);
-    const X3 = mod(E2 * F2);
-    const Y3 = mod(G3 * H2);
-    const T3 = mod(E2 * H2);
-    const Z3 = mod(F2 * G3);
-    return new _Point(X3, Y3, Z3, T3);
-  }
-  mul(n, safe = true) {
-    if (n === 0n)
-      return safe === true ? err("cannot multiply by 0") : I2;
-    if (!(typeof n === "bigint" && 0n < n && n < N2))
-      err("invalid scalar, must be < L");
-    if (!safe && this.is0() || n === 1n)
-      return this;
-    if (this.equals(G2))
-      return wNAF(n).p;
-    let p2 = I2, f3 = G2;
-    for (let d2 = this; n > 0n; d2 = d2.double(), n >>= 1n) {
-      if (n & 1n)
-        p2 = p2.add(d2);
-      else if (safe)
-        f3 = f3.add(d2);
+  sign(factory, actionRegistry, authRegistry) {
+    let [msg, err2] = this.calculateDigest();
+    if (err2) {
+      return [this, err2];
     }
-    return p2;
-  }
-  multiply(scalar) {
-    return this.mul(scalar);
-  }
-  // Aliases for compatibilty
-  clearCofactor() {
-    return this.mul(BigInt(CURVE.h), false);
-  }
-  // multiply by cofactor
-  isSmallOrder() {
-    return this.clearCofactor().is0();
-  }
-  // check if P is small order
-  isTorsionFree() {
-    let p2 = this.mul(N2 / 2n, false).double();
-    if (N2 % 2n)
-      p2 = p2.add(this);
-    return p2.is0();
-  }
-  toAffine() {
-    const { ex: x2, ey: y2, ez: z2 } = this;
-    if (this.equals(I2))
-      return { x: 0n, y: 1n };
-    const iz = invert(z2);
-    if (mod(z2 * iz) !== 1n)
-      err("invalid inverse");
-    return { x: mod(x2 * iz), y: mod(y2 * iz) };
-  }
-  toRawBytes() {
-    const { x: x2, y: y2 } = this.toAffine();
-    const b2 = n2b_32LE(y2);
-    b2[31] |= x2 & 1n ? 128 : 0;
-    return b2;
-  }
-  toHex() {
-    return b2h(this.toRawBytes());
-  }
-  // encode to hex string
-};
-Point.BASE = new Point(Gx, Gy, 1n, mod(Gx * Gy));
-Point.ZERO = new Point(0n, 1n, 1n, 0n);
-var { BASE: G2, ZERO: I2 } = Point;
-var padh = (num, pad) => num.toString(16).padStart(pad, "0");
-var b2h = (b2) => Array.from(b2).map((e) => padh(e, 2)).join("");
-var h2b = (hex2) => {
-  const l2 = hex2.length;
-  if (!str(hex2) || l2 % 2)
-    err("hex invalid 1");
-  const arr = u8n(l2 / 2);
-  for (let i = 0; i < arr.length; i++) {
-    const j2 = i * 2;
-    const h2 = hex2.slice(j2, j2 + 2);
-    const b2 = Number.parseInt(h2, 16);
-    if (Number.isNaN(b2) || b2 < 0)
-      err("hex invalid 2");
-    arr[i] = b2;
-  }
-  return arr;
-};
-var n2b_32LE = (num) => h2b(padh(num, 32 * 2)).reverse();
-var b2n_LE = (b2) => BigInt("0x" + b2h(u8n(au8(b2)).reverse()));
-var concatB = (...arrs) => {
-  const r = u8n(arrs.reduce((sum, a) => sum + au8(a).length, 0));
-  let pad = 0;
-  arrs.forEach((a) => {
-    r.set(a, pad);
-    pad += a.length;
-  });
-  return r;
-};
-var invert = (num, md = P2) => {
-  if (num === 0n || md <= 0n)
-    err("no inverse n=" + num + " mod=" + md);
-  let a = mod(num, md), b2 = md, x2 = 0n, y2 = 1n, u2 = 1n, v2 = 0n;
-  while (a !== 0n) {
-    const q2 = b2 / a, r = b2 % a;
-    const m2 = x2 - u2 * q2, n = y2 - v2 * q2;
-    b2 = a, a = r, x2 = u2, y2 = v2, u2 = m2, v2 = n;
-  }
-  return b2 === 1n ? mod(x2, md) : err("no inverse");
-};
-var pow2 = (x2, power) => {
-  let r = x2;
-  while (power-- > 0n) {
-    r *= r;
-    r %= P2;
-  }
-  return r;
-};
-var pow_2_252_3 = (x2) => {
-  const x22 = x2 * x2 % P2;
-  const b2 = x22 * x2 % P2;
-  const b4 = pow2(b2, 2n) * b2 % P2;
-  const b5 = pow2(b4, 1n) * x2 % P2;
-  const b10 = pow2(b5, 5n) * b5 % P2;
-  const b20 = pow2(b10, 10n) * b10 % P2;
-  const b40 = pow2(b20, 20n) * b20 % P2;
-  const b80 = pow2(b40, 40n) * b40 % P2;
-  const b160 = pow2(b80, 80n) * b80 % P2;
-  const b240 = pow2(b160, 80n) * b80 % P2;
-  const b250 = pow2(b240, 10n) * b10 % P2;
-  const pow_p_5_8 = pow2(b250, 2n) * x2 % P2;
-  return { pow_p_5_8, b2 };
-};
-var RM1 = 19681161376707505956807079304988542015446066515923890162744021073123829784752n;
-var uvRatio = (u2, v2) => {
-  const v3 = mod(v2 * v2 * v2);
-  const v7 = mod(v3 * v3 * v2);
-  const pow3 = pow_2_252_3(u2 * v7).pow_p_5_8;
-  let x2 = mod(u2 * v3 * pow3);
-  const vx2 = mod(v2 * x2 * x2);
-  const root1 = x2;
-  const root2 = mod(x2 * RM1);
-  const useRoot1 = vx2 === u2;
-  const useRoot2 = vx2 === mod(-u2);
-  const noRoot = vx2 === mod(-u2 * RM1);
-  if (useRoot1)
-    x2 = root1;
-  if (useRoot2 || noRoot)
-    x2 = root2;
-  if ((mod(x2) & 1n) === 1n)
-    x2 = mod(-x2);
-  return { isValid: useRoot1 || useRoot2, value: x2 };
-};
-var modL_LE = (hash) => mod(b2n_LE(hash), N2);
-var _shaS;
-var sha512a = (...m2) => etc.sha512Async(...m2);
-var sha512s = (...m2) => (
-  // Sync SHA512, not set by default
-  typeof _shaS === "function" ? _shaS(...m2) : err("etc.sha512Sync not set")
-);
-var hash2extK = (hashed) => {
-  const head = hashed.slice(0, 32);
-  head[0] &= 248;
-  head[31] &= 127;
-  head[31] |= 64;
-  const prefix = hashed.slice(32, 64);
-  const scalar = modL_LE(head);
-  const point = G2.mul(scalar);
-  const pointBytes = point.toRawBytes();
-  return { head, prefix, scalar, point, pointBytes };
-};
-var getExtendedPublicKey = (priv) => hash2extK(sha512s(toU8(priv, 32)));
-var getPublicKey = (priv) => getExtendedPublicKey(priv).pointBytes;
-function hashFinish(asynchronous, res) {
-  if (asynchronous)
-    return sha512a(res.hashable).then(res.finish);
-  return res.finish(sha512s(res.hashable));
-}
-var _sign = (e, rBytes, msg) => {
-  const { pointBytes: P3, scalar: s } = e;
-  const r = modL_LE(rBytes);
-  const R2 = G2.mul(r).toRawBytes();
-  const hashable = concatB(R2, P3, msg);
-  const finish = (hashed) => {
-    const S2 = mod(r + modL_LE(hashed) * s, N2);
-    return au8(concatB(R2, n2b_32LE(S2)), 64);
-  };
-  return { hashable, finish };
-};
-var sign = (msg, privKey) => {
-  const m2 = toU8(msg);
-  const e = getExtendedPublicKey(privKey);
-  const rBytes = sha512s(e.prefix, m2);
-  return hashFinish(false, _sign(e, rBytes, m2));
-};
-var dvo = { zip215: true };
-var _verify = (sig, msg, pub, opts = dvo) => {
-  msg = toU8(msg);
-  sig = toU8(sig, 64);
-  const { zip215 } = opts;
-  let A2, R2, s, SB, hashable = new Uint8Array();
-  try {
-    A2 = Point.fromHex(pub, zip215);
-    R2 = Point.fromHex(sig.slice(0, 32), zip215);
-    s = b2n_LE(sig.slice(32, 64));
-    SB = G2.mul(s, false);
-    hashable = concatB(R2.toRawBytes(), A2.toRawBytes(), msg);
-  } catch (error) {
-  }
-  const finish = (hashed) => {
-    if (SB == null)
-      return false;
-    if (!zip215 && A2.isSmallOrder())
-      return false;
-    const k2 = modL_LE(hashed);
-    const RkA = R2.add(A2.mul(k2, false));
-    return RkA.add(SB.negate()).clearCofactor().is0();
-  };
-  return { hashable, finish };
-};
-var verify = (s, m2, p2, opts = dvo) => hashFinish(false, _verify(s, m2, p2, opts));
-var cr2 = () => (
-  // We support: 1) browsers 2) node.js 19+
-  typeof globalThis === "object" && "crypto" in globalThis ? globalThis.crypto : void 0
-);
-var etc = {
-  bytesToHex: b2h,
-  hexToBytes: h2b,
-  concatBytes: concatB,
-  mod,
-  invert,
-  randomBytes: (len = 32) => {
-    const crypto3 = cr2();
-    if (!crypto3 || !crypto3.getRandomValues)
-      err("crypto.getRandomValues must be defined");
-    return crypto3.getRandomValues(u8n(len));
-  },
-  sha512Async: async (...messages) => {
-    const crypto3 = cr2();
-    if (!crypto3 || !crypto3.subtle)
-      err("crypto.subtle or etc.sha512Async must be defined");
-    const m2 = concatB(...messages);
-    return u8n(await crypto3.subtle.digest("SHA-512", m2.buffer));
-  },
-  sha512Sync: void 0
-  // Actual logic below
-};
-Object.defineProperties(etc, { sha512Sync: {
-  configurable: false,
-  get() {
-    return _shaS;
-  },
-  set(f3) {
-    if (!_shaS)
-      _shaS = f3;
-  }
-} });
-var W2 = 8;
-var precompute = () => {
-  const points = [];
-  const windows = 256 / W2 + 1;
-  let p2 = G2, b2 = p2;
-  for (let w2 = 0; w2 < windows; w2++) {
-    b2 = p2;
-    points.push(b2);
-    for (let i = 1; i < 2 ** (W2 - 1); i++) {
-      b2 = b2.add(p2);
-      points.push(b2);
+    this.auth = factory.sign(msg);
+    [this.bytes, err2] = this.toBytes();
+    if (err2) {
+      return [this, err2];
     }
-    p2 = b2.double();
-  }
-  return points;
-};
-var Gpows = void 0;
-var wNAF = (n) => {
-  const comp = Gpows || (Gpows = precompute());
-  const neg = (cnd, p3) => {
-    let n2 = p3.negate();
-    return cnd ? n2 : p3;
-  };
-  let p2 = I2, f3 = G2;
-  const windows = 1 + 256 / W2;
-  const wsize = 2 ** (W2 - 1);
-  const mask = BigInt(2 ** W2 - 1);
-  const maxNum = 2 ** W2;
-  const shiftBy = BigInt(W2);
-  for (let w2 = 0; w2 < windows; w2++) {
-    const off = w2 * wsize;
-    let wbits = Number(n & mask);
-    n >>= shiftBy;
-    if (wbits > wsize) {
-      wbits -= maxNum;
-      n += 1n;
-    }
-    const off1 = off, off2 = off + Math.abs(wbits) - 1;
-    const cnd1 = w2 % 2 !== 0, cnd2 = wbits < 0;
-    if (wbits === 0) {
-      f3 = f3.add(neg(cnd1, comp[off1]));
-    } else {
-      p2 = p2.add(neg(cnd2, comp[off2]));
-    }
-  }
-  return { p: p2, f: f3 };
-};
-
-// src/crypto/ed25519.ts
-import { createHash as createHash2 } from "crypto";
-var PUBLIC_KEY_LENGTH = 32;
-var PRIVATE_KEY_LENGTH = 32;
-var SIGNATURE_LENGTH = 64;
-function secretKeyFromBytes(skBytes) {
-  return typeof skBytes === "string" ? jo.hexToBuffer(skBytes) : skBytes;
-}
-function secretKeyToBytes(sk) {
-  return sk;
-}
-function publicKeyFromBytes(pkBytes) {
-  return typeof pkBytes === "string" ? jo.hexToBuffer(pkBytes) : pkBytes;
-}
-function publicKeyToBytes(pk) {
-  return pk;
-}
-function signatureFromBytes(sigBytes) {
-  return sigBytes;
-}
-function signatureToBytes(sig) {
-  return sig;
-}
-function verify2(pk, sig, msg) {
-  const message = typeof msg === "string" ? jo.hexToBuffer(msg) : msg;
-  return verify(sig, message, pk);
-}
-function sign2(msg, sk) {
-  const message = typeof msg === "string" ? jo.hexToBuffer(msg) : msg;
-  return sign(message, sk);
-}
-etc.sha512Sync = (...messages) => {
-  const hash = createHash2("sha512");
-  for (const message of messages) {
-    hash.update(message);
-  }
-  return new Uint8Array(hash.digest());
-};
-
-// src/utils/hex.ts
-function isHex(str2) {
-  const hexRegex = /^[0-9a-fA-F]+$/;
-  return hexRegex.test(str2);
-}
-function toHex(b2) {
-  return Buffer.from(b2).toString("hex");
-}
-function loadHex(s, expectedSize) {
-  const bytes3 = Buffer.from(s, "hex");
-  if (expectedSize !== -1 && bytes3.length !== expectedSize) {
-    throw new Error("Invalid size");
-  }
-  return new Uint8Array(bytes3);
-}
-
-// src/auth/ed25519.ts
-var Ed25519AuthSize = PUBLIC_KEY_LENGTH + SIGNATURE_LENGTH;
-var ED25519 = class _ED25519 {
-  signer;
-  signature;
-  addr = EMPTY_ADDRESS;
-  constructor(signer, signature) {
-    this.signer = signer;
-    this.signature = signature;
-  }
-  address() {
-    if (bufferEquals(this.addr.toBytes(), EMPTY_ADDRESS.toBytes())) {
-      this.addr = Address.newAddress(ED25519_ID, this.signer);
-    }
-    return this.addr;
-  }
-  getTypeId() {
-    return ED25519_ID;
-  }
-  async verify(message) {
-    return verify2(this.signer, this.signature, message);
-  }
-  actor() {
-    return this.address();
-  }
-  sponsor() {
-    return this.address();
-  }
-  size() {
-    return Ed25519AuthSize;
+    return _Transaction.fromBytes(this.bytes, actionRegistry, authRegistry);
   }
   toBytes() {
-    const size = this.size();
-    const codec = Codec.newWriter(size, size);
-    codec.packFixedBytes(this.signer);
-    codec.packFixedBytes(this.signature);
-    return codec.toBytes();
+    if (this.bytes.length > 0) {
+      return [this.bytes, void 0];
+    }
+    const codec = Codec.newWriter(this.size(), NETWORK_SIZE_LIMIT);
+    const baseBytes = this.base.toBytes();
+    codec.packFixedBytes(baseBytes);
+    const numActions = this.actions.length;
+    codec.packByte(numActions);
+    this.actions.forEach((action) => {
+      const actionTypeId = action.getTypeId();
+      codec.packByte(actionTypeId);
+      const actionBytes = action.toBytes();
+      codec.packFixedBytes(actionBytes);
+    });
+    if (this.auth) {
+      const authTypeId = this.auth.getTypeId();
+      codec.packByte(authTypeId);
+      const authBytes = this.auth.toBytes();
+      codec.packFixedBytes(authBytes);
+    }
+    return [codec.toBytes(), codec.getError()];
   }
-  static fromBytes(bytes3) {
-    const codec = Codec.newReader(bytes3, bytes3.length);
-    const signer = codec.unpackFixedBytes(PUBLIC_KEY_LENGTH);
-    const signature = codec.unpackFixedBytes(SIGNATURE_LENGTH);
-    return [new _ED25519(signer, signature), codec.getError()];
+  static fromBytes(bytes3, actionRegistry, authRegistry) {
+    let codec = Codec.newReader(bytes3, bytes3.length);
+    const baseBytes = codec.unpackFixedBytes(BaseTxSize);
+    let [base, err2] = BaseTx.fromBytes(baseBytes);
+    if (err2) {
+      return [
+        new _Transaction(base, []),
+        new Error(`Failed to unpack base transaction: ${err2}`)
+      ];
+    }
+    const numActions = codec.unpackByte();
+    if (numActions === 0) {
+      return [
+        new _Transaction(base, []),
+        new Error("Transaction must have at least one action")
+      ];
+    }
+    const actions = [];
+    for (let i = 0; i < numActions; i++) {
+      const actionTypeId = codec.unpackByte();
+      const [fromBytesAction, ok] = actionRegistry.lookupIndex(actionTypeId);
+      if (!ok) {
+        return [
+          new _Transaction(base, []),
+          new Error(`Invalid action type: ${actionTypeId}`)
+        ];
+      }
+      const [action, codecAction] = fromBytesAction(codec);
+      if (codecAction.getError()) {
+        return [
+          new _Transaction(base, []),
+          new Error(`Failed to unpack action: ${err2}`)
+        ];
+      }
+      codec = codecAction;
+      actions.push(action);
+    }
+    const transaction = new _Transaction(base, actions);
+    if (codec.getOffset() < bytes3.length) {
+      const authTypeId = codec.unpackByte();
+      const [fromBytesAuth, ok] = authRegistry.lookupIndex(authTypeId);
+      if (!ok) {
+        return [
+          new _Transaction(base, []),
+          new Error(`Invalid auth type: ${authTypeId}`)
+        ];
+      }
+      const [auth, codecAuth] = fromBytesAuth(codec);
+      if (codecAuth.getError()) {
+        return [
+          new _Transaction(base, []),
+          new Error(`Failed to unpack auth: ${err2}`)
+        ];
+      }
+      codec = codecAuth;
+      transaction.auth = auth;
+    }
+    transaction.bytes = bytes3;
+    return [transaction, codec.getError()];
   }
-  static publicKeyToHex(publicKey) {
-    return Buffer.from(publicKey).toString("hex");
+  id() {
+    return Ve.fromBytes(ToID(this.bytes))[0];
   }
-  static hexToPublicKey(hex2) {
-    return Buffer.from(hex2, "hex");
+  size() {
+    let size = this.base.size() + BYTE_LEN;
+    this.actions.forEach((action) => {
+      const actionSize = BYTE_LEN + action.size();
+      size += actionSize;
+    });
+    if (this.auth) {
+      const authSize = BYTE_LEN + this.auth.size();
+      size += authSize;
+    }
+    return size;
   }
 };
-var ED25519Factory = class _ED25519Factory {
-  privateKey;
-  constructor(privateKey) {
-    let privKey = randomBytes(32);
-    if (privateKey) {
-      privKey = privateKey;
+
+// src/common/rpc.ts
+var JrpcProvider = class {
+  constructor(url) {
+    this.url = url;
+  }
+  reqId = 0;
+  async callMethod(method, parameters, fetchOptions) {
+    const body = {
+      jsonrpc: "2.0",
+      id: this.reqId++,
+      method,
+      params: parameters
+    };
+    const resp = await fetch(this.url, {
+      ...fetchOptions,
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: {
+        "Content-Type": "application/json",
+        ...fetchOptions?.headers
+      }
+    }).then(async (r) => r.json()).then((data) => data);
+    if (resp.error) throw new Error(resp.error.message);
+    return resp.result;
+  }
+  // TODO: Batch RPC call
+};
+
+// src/common/baseApi.ts
+var Api = class {
+  constructor(baseURL = MAINNET_PUBLIC_API_BASE_URL, path = `${HYPERCHAIN_ENDPOINT}/${COREAPI_PATH}`, base, fetchOptions) {
+    this.path = path;
+    this.base = base;
+    this.fetchOptions = fetchOptions;
+    this.rpcProvider = new JrpcProvider(baseURL + path);
+  }
+  rpcProvider;
+  setFetchOptions(options) {
+    this.fetchOptions = options;
+  }
+  getMethodName = (methodName) => {
+    if (!this.base) {
+      return methodName;
     }
-    this.privateKey = privKey;
+    return `${this.base}.${methodName}`;
+  };
+  callRpc = (methodName, params) => this.rpcProvider.callMethod(
+    this.getMethodName(methodName),
+    params,
+    this.fetchOptions
+  );
+};
+
+// src/services/rpc.ts
+var RpcService = class extends Api {
+  constructor(config) {
+    super(
+      config.baseApiUrl,
+      `/ext/bc/${config.blockchainId}/${COREAPI_PATH}`,
+      COREAPI_METHOD_PREFIX
+    );
+    this.config = config;
   }
-  sign(message) {
-    const publicKey = getPublicKey(this.privateKey);
-    const signature = sign2(message, this.privateKey);
-    return new ED25519(publicKey, signature);
+  ping() {
+    return this.callRpc("ping");
   }
-  computeUnits() {
-    return ED25519_COMPUTE_UNITS;
+  // Retrieve network IDs
+  getNetworkInfo() {
+    return this.callRpc("network");
   }
-  bandwidth() {
-    return Ed25519AuthSize;
+  // Get information about the last accepted block
+  getLastAccepted() {
+    return this.callRpc("lastAccepted");
   }
-  static generateKeyPair() {
-    const privateKey = new _ED25519Factory().privateKey;
-    const publicKey = getPublicKey(privateKey);
-    return { privateKey, publicKey };
+  // Fetch current unit prices for transactions
+  getUnitPrices() {
+    return this.callRpc("unitPrices");
   }
-  static publicKeyFromPrivateKey(privateKey) {
-    return getPublicKey(privateKey);
+  // Fetch warp signatures associated with a transaction
+  getWarpSignatures(txID) {
+    return this.callRpc("getWarpSignatures", {
+      txID
+    });
   }
-  static privateKeyToHex(privateKey) {
-    return Buffer.from(privateKey).toString("hex");
+  // Submit a transaction to the network
+  async submitTransaction(tx) {
+    const txBase64 = Array.from(tx);
+    return this.callRpc("submitTx", { tx: txBase64 });
   }
-  static hexToPrivateKey(hex2) {
-    let privateKeyBytes = Buffer.from(hex2, "hex");
-    if (privateKeyBytes.length === PRIVATE_KEY_LENGTH + PUBLIC_KEY_LENGTH) {
-      privateKeyBytes = privateKeyBytes.subarray(0, PRIVATE_KEY_LENGTH);
-      return loadHex(toHex(privateKeyBytes), PRIVATE_KEY_LENGTH);
-    } else if (privateKeyBytes.length !== PRIVATE_KEY_LENGTH) {
-      throw new Error("Invalid combined key size");
+  async generateTransaction(genesisInfo, actionRegistry, authRegistry, actions, authFactory) {
+    try {
+      const timestamp = getUnixRMilli(
+        Date.now(),
+        genesisInfo.validityWindow
+      );
+      const chainId = Ve.fromString(this.config.blockchainId);
+      const unitPrices = await this.getUnitPrices();
+      const units = estimateUnits(genesisInfo, actions, authFactory);
+      const [maxFee, error] = mulSum(unitPrices.unitPrices, units);
+      if (error) {
+        return {
+          submit: async () => {
+            throw new Error("Transaction failed, cannot submit.");
+          },
+          txSigned: {},
+          err: error
+        };
+      }
+      const base = new BaseTx(timestamp, chainId, maxFee);
+      const tx = new Transaction(base, actions);
+      const [txSigned, err2] = tx.sign(authFactory, actionRegistry, authRegistry);
+      if (err2) {
+        return {
+          submit: async () => {
+            throw new Error("Transaction failed, cannot submit.");
+          },
+          txSigned: {},
+          err: err2
+        };
+      }
+      const submit = async () => {
+        const [txBytes, err3] = txSigned.toBytes();
+        if (err3) {
+          throw new Error(`Transaction failed, cannot submit. Err: ${err3}`);
+        }
+        return await this.submitTransaction(txBytes);
+      };
+      return { submit, txSigned, err: void 0 };
+    } catch (error) {
+      return {
+        submit: async () => {
+          throw new Error("Transaction failed, cannot submit.");
+        },
+        txSigned: {},
+        err: error
+      };
     }
-    return loadHex(hex2, PRIVATE_KEY_LENGTH);
   }
 };
+
+// src/actions/index.ts
+var actions_exports = {};
+__export(actions_exports, {
+  Transfer: () => Transfer,
+  TransferTxSize: () => TransferTxSize
+});
 
 // src/actions/transfer.ts
 var TransferTxSize = ADDRESS_LEN + ID_LEN + UINT64_LEN + INT_LEN + MAX_MEMO_SIZE;
@@ -7805,6 +7467,19 @@ var Transfer = class _Transfer {
     return [action, codecResult];
   }
 };
+
+// src/auth/index.ts
+var auth_exports = {};
+__export(auth_exports, {
+  BLS: () => BLS,
+  BLSFactory: () => BLSFactory,
+  BlsAuthSize: () => BlsAuthSize,
+  ED25519: () => ED25519,
+  ED25519Factory: () => ED25519Factory,
+  Ed25519AuthSize: () => Ed25519AuthSize,
+  getAuth: () => getAuth,
+  getAuthFactory: () => getAuthFactory
+});
 
 // node_modules/@noble/curves/node_modules/@noble/hashes/esm/_assert.js
 function isBytes4(a) {
@@ -8280,7 +7955,7 @@ function bitSet(n, pos, value) {
   return n | (value ? _1n : _0n) << BigInt(pos);
 }
 var bitMask = (n) => (_2n << BigInt(n - 1)) - _1n;
-var u8n2 = (data) => new Uint8Array(data);
+var u8n = (data) => new Uint8Array(data);
 var u8fr = (arr) => Uint8Array.from(arr);
 function createHmacDrbg(hashLen, qByteLen, hmacFn) {
   if (typeof hashLen !== "number" || hashLen < 2)
@@ -8289,8 +7964,8 @@ function createHmacDrbg(hashLen, qByteLen, hmacFn) {
     throw new Error("qByteLen must be a number");
   if (typeof hmacFn !== "function")
     throw new Error("hmacFn must be a function");
-  let v2 = u8n2(hashLen);
-  let k2 = u8n2(hashLen);
+  let v2 = u8n(hashLen);
+  let k2 = u8n(hashLen);
   let i = 0;
   const reset = () => {
     v2.fill(1);
@@ -8298,7 +7973,7 @@ function createHmacDrbg(hashLen, qByteLen, hmacFn) {
     i = 0;
   };
   const h2 = (...b2) => hmacFn(k2, v2, ...b2);
-  const reseed = (seed = u8n2()) => {
+  const reseed = (seed = u8n()) => {
     k2 = h2(u8fr([0]), seed);
     v2 = h2();
     if (seed.length === 0)
@@ -8370,7 +8045,7 @@ var _5n = BigInt(5);
 var _8n = BigInt(8);
 var _9n = BigInt(9);
 var _16n = BigInt(16);
-function mod2(a, b2) {
+function mod(a, b2) {
   const result = a % b2;
   return result >= _0n2 ? result : b2 + result;
 }
@@ -8388,11 +8063,11 @@ function pow(num, power, modulo) {
   }
   return res;
 }
-function invert2(number, modulo) {
+function invert(number, modulo) {
   if (number === _0n2 || modulo <= _0n2) {
     throw new Error(`invert: expected positive integers, got n=${number} mod=${modulo}`);
   }
-  let a = mod2(number, modulo);
+  let a = mod(number, modulo);
   let b2 = modulo;
   let x2 = _0n2, y2 = _1n2, u2 = _1n2, v2 = _0n2;
   while (a !== _0n2) {
@@ -8405,7 +8080,7 @@ function invert2(number, modulo) {
   const gcd2 = b2;
   if (gcd2 !== _1n2)
     throw new Error("invert: does not exist");
-  return mod2(x2, modulo);
+  return mod(x2, modulo);
 }
 function tonelliShanks(P3) {
   const legendreC = (P3 - _1n2) / _2n2;
@@ -8561,7 +8236,7 @@ function Field(ORDER, bitLen2, isLE3 = false, redef = {}) {
     MASK: bitMask(BITS),
     ZERO: _0n2,
     ONE: _1n2,
-    create: (num) => mod2(num, ORDER),
+    create: (num) => mod(num, ORDER),
     isValid: (num) => {
       if (typeof num !== "bigint")
         throw new Error(`Invalid field element: expected bigint, got ${typeof num}`);
@@ -8569,20 +8244,20 @@ function Field(ORDER, bitLen2, isLE3 = false, redef = {}) {
     },
     is0: (num) => num === _0n2,
     isOdd: (num) => (num & _1n2) === _1n2,
-    neg: (num) => mod2(-num, ORDER),
+    neg: (num) => mod(-num, ORDER),
     eql: (lhs, rhs) => lhs === rhs,
-    sqr: (num) => mod2(num * num, ORDER),
-    add: (lhs, rhs) => mod2(lhs + rhs, ORDER),
-    sub: (lhs, rhs) => mod2(lhs - rhs, ORDER),
-    mul: (lhs, rhs) => mod2(lhs * rhs, ORDER),
+    sqr: (num) => mod(num * num, ORDER),
+    add: (lhs, rhs) => mod(lhs + rhs, ORDER),
+    sub: (lhs, rhs) => mod(lhs - rhs, ORDER),
+    mul: (lhs, rhs) => mod(lhs * rhs, ORDER),
     pow: (num, power) => FpPow(f3, num, power),
-    div: (lhs, rhs) => mod2(lhs * invert2(rhs, ORDER), ORDER),
+    div: (lhs, rhs) => mod(lhs * invert(rhs, ORDER), ORDER),
     // Same as above, but doesn't normalize
     sqrN: (num) => num * num,
     addN: (lhs, rhs) => lhs + rhs,
     subN: (lhs, rhs) => lhs - rhs,
     mulN: (lhs, rhs) => lhs * rhs,
-    inv: (num) => invert2(num, ORDER),
+    inv: (num) => invert(num, ORDER),
     sqrt: redef.sqrt || ((n) => sqrtP(f3, n)),
     invertBatch: (lst) => FpInvertBatch(f3, lst),
     // TODO: do we really need constant cmov?
@@ -8614,7 +8289,7 @@ function mapHashToField(key, fieldOrder, isLE3 = false) {
   if (len < 16 || len < minLen || len > 1024)
     throw new Error(`expected ${minLen}-1024 bytes of input, got ${len}`);
   const num = isLE3 ? bytesToNumberBE(key) : bytesToNumberLE(key);
-  const reduced = mod2(num, fieldOrder - _1n2) + _1n2;
+  const reduced = mod(num, fieldOrder - _1n2) + _1n2;
   return isLE3 ? numberToBytesLE(reduced, fieldLen) : numberToBytesBE(reduced, fieldLen);
 }
 
@@ -8708,7 +8383,7 @@ function hash_to_field(msg, count, options) {
     for (let j2 = 0; j2 < m2; j2++) {
       const elm_offset = L2 * (j2 + i * m2);
       const tv = prb.subarray(elm_offset, elm_offset + L2);
-      e[j2] = mod2(os2ip(tv), p2);
+      e[j2] = mod(os2ip(tv), p2);
     }
     u2[i] = e;
   }
@@ -8751,7 +8426,7 @@ function createHasher(Point2, mapToCurve, def) {
 // node_modules/@noble/curves/esm/abstract/curve.js
 var _0n3 = BigInt(0);
 var _1n3 = BigInt(1);
-function wNAF2(c, bits) {
+function wNAF(c, bits) {
   const constTimeNegate = (condition, item) => {
     const neg = item.negate();
     return condition ? neg : item;
@@ -8892,7 +8567,7 @@ function validatePointOpts(curve) {
   }
   return Object.freeze({ ...opts });
 }
-var { bytesToNumberBE: b2n, hexToBytes: h2b2 } = utils_exports;
+var { bytesToNumberBE: b2n, hexToBytes: h2b } = utils_exports;
 var _0n4 = BigInt(0);
 var _1n4 = BigInt(1);
 var _2n3 = BigInt(2);
@@ -8942,7 +8617,7 @@ function weierstrassPoints(opts) {
       throw new Error(`private key must be ${nByteLength} bytes, hex or bigint, not ${typeof key}`);
     }
     if (wrapPrivateKey)
-      num = mod2(num, n);
+      num = mod(num, n);
     assertGE(num);
     return num;
   }
@@ -9278,7 +8953,7 @@ function weierstrassPoints(opts) {
   Point2.BASE = new Point2(CURVE2.Gx, CURVE2.Gy, Fp3.ONE);
   Point2.ZERO = new Point2(Fp3.ZERO, Fp3.ONE, Fp3.ZERO);
   const _bits = CURVE2.nBitLength;
-  const wnaf = wNAF2(Point2, CURVE2.endo ? Math.ceil(_bits / 2) : _bits);
+  const wnaf = wNAF(Point2, CURVE2.endo ? Math.ceil(_bits / 2) : _bits);
   return {
     CURVE: CURVE2,
     ProjectivePoint: Point2,
@@ -10775,6 +10450,16 @@ var BLS = class _BLS {
     );
     return [new _BLS(signer, signature), codec.getError()];
   }
+  static fromBytesCodec(codec) {
+    const codecResult = codec;
+    const signer = ki.publicKeyFromBytes(
+      codecResult.unpackFixedBytes(ki.PUBLIC_KEY_LENGTH)
+    );
+    const signature = ki.signatureFromBytes(
+      codecResult.unpackFixedBytes(ki.SIGNATURE_LENGTH)
+    );
+    return [new _BLS(signer, signature), codecResult];
+  }
   static publicKeyToHex(publicKey) {
     return Buffer.from(ki.publicKeyToBytes(publicKey)).toString("hex");
   }
@@ -10819,253 +10504,577 @@ var BLSFactory = class _BLSFactory {
   }
 };
 
-// src/transactions/transaction.ts
-var Transaction = class _Transaction {
-  base;
-  actions;
-  auth;
-  bytes = new Uint8Array();
-  constructor(base, actions) {
-    this.base = base;
-    this.actions = actions;
+// node_modules/@noble/ed25519/index.js
+var P2 = 2n ** 255n - 19n;
+var N2 = 2n ** 252n + 27742317777372353535851937790883648493n;
+var Gx = 0x216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51an;
+var Gy = 0x6666666666666666666666666666666666666666666666666666666666666658n;
+var CURVE = {
+  a: -1n,
+  // where a=-1, d = -(121665/121666) == -(121665 * inv(121666)) mod P
+  d: 37095705934669439343138083508754565189542113879843219016388785533085940283555n,
+  p: P2,
+  n: N2,
+  h: 8,
+  Gx,
+  Gy
+  // field prime, curve (group) order, cofactor
+};
+var err = (m2 = "") => {
+  throw new Error(m2);
+};
+var str = (s) => typeof s === "string";
+var isu8 = (a) => a instanceof Uint8Array || a != null && typeof a === "object" && a.constructor.name === "Uint8Array";
+var au8 = (a, l2) => (
+  // is Uint8Array (of specific length)
+  !isu8(a) || typeof l2 === "number" && l2 > 0 && a.length !== l2 ? err("Uint8Array of valid length expected") : a
+);
+var u8n2 = (data) => new Uint8Array(data);
+var toU8 = (a, len) => au8(str(a) ? h2b2(a) : u8n2(au8(a)), len);
+var mod2 = (a, b2 = P2) => {
+  let r = a % b2;
+  return r >= 0n ? r : b2 + r;
+};
+var isPoint = (p2) => p2 instanceof Point ? p2 : err("Point expected");
+var Point = class _Point {
+  constructor(ex, ey, ez, et2) {
+    this.ex = ex;
+    this.ey = ey;
+    this.ez = ez;
+    this.et = et2;
   }
-  calculateDigest() {
-    const codec = Codec.newWriter(this.size(), NETWORK_SIZE_LIMIT);
-    codec.packFixedBytes(this.base.toBytes());
-    codec.packByte(this.actions.length);
-    this.actions.forEach((action) => {
-      const actionTypeId = action.getTypeId();
-      codec.packByte(actionTypeId);
-      codec.packFixedBytes(action.toBytes());
-    });
-    return [codec.toBytes(), codec.getError()];
+  static fromAffine(p2) {
+    return new _Point(p2.x, p2.y, 1n, mod2(p2.x * p2.y));
   }
-  sign(factory) {
-    let [msg, err2] = this.calculateDigest();
-    if (err2) {
-      return [this, err2];
-    }
-    this.auth = factory.sign(msg);
-    [this.bytes, err2] = this.toBytes();
-    if (err2) {
-      return [this, err2];
-    }
-    return _Transaction.fromBytes(this.bytes);
+  static fromHex(hex2, zip215 = false) {
+    const { d: d2 } = CURVE;
+    hex2 = toU8(hex2, 32);
+    const normed = hex2.slice();
+    const lastByte = hex2[31];
+    normed[31] = lastByte & ~128;
+    const y2 = b2n_LE(normed);
+    if (zip215 && !(0n <= y2 && y2 < 2n ** 256n))
+      err("bad y coord 1");
+    if (!zip215 && !(0n <= y2 && y2 < P2))
+      err("bad y coord 2");
+    const y22 = mod2(y2 * y2);
+    const u2 = mod2(y22 - 1n);
+    const v2 = mod2(d2 * y22 + 1n);
+    let { isValid, value: x2 } = uvRatio(u2, v2);
+    if (!isValid)
+      err("bad y coordinate 3");
+    const isXOdd = (x2 & 1n) === 1n;
+    const isLastByteOdd = (lastByte & 128) !== 0;
+    if (!zip215 && x2 === 0n && isLastByteOdd)
+      err("bad y coord 3");
+    if (isLastByteOdd !== isXOdd)
+      x2 = mod2(-x2);
+    return new _Point(x2, y2, 1n, mod2(x2 * y2));
   }
-  toBytes() {
-    if (this.bytes.length > 0) {
-      return [this.bytes, void 0];
-    }
-    const codec = Codec.newWriter(this.size(), NETWORK_SIZE_LIMIT);
-    const baseBytes = this.base.toBytes();
-    codec.packFixedBytes(baseBytes);
-    const numActions = this.actions.length;
-    codec.packByte(numActions);
-    this.actions.forEach((action) => {
-      const actionTypeId = action.getTypeId();
-      codec.packByte(actionTypeId);
-      const actionBytes = action.toBytes();
-      codec.packFixedBytes(actionBytes);
-    });
-    if (this.auth) {
-      const authTypeId = this.auth.getTypeId();
-      codec.packByte(authTypeId);
-      const authBytes = this.auth.toBytes();
-      codec.packFixedBytes(authBytes);
-    }
-    return [codec.toBytes(), codec.getError()];
+  get x() {
+    return this.toAffine().x;
   }
-  static fromBytes(bytes3) {
-    let codec = Codec.newReader(bytes3, bytes3.length);
-    const baseBytes = codec.unpackFixedBytes(BaseTxSize);
-    let [base, err2] = BaseTx.fromBytes(baseBytes);
-    if (err2) {
-      return [
-        new _Transaction(base, []),
-        new Error(`Failed to unpack base transaction: ${err2}`)
-      ];
-    }
-    const numActions = codec.unpackByte();
-    if (numActions === 0) {
-      return [
-        new _Transaction(base, []),
-        new Error("Transaction must have at least one action")
-      ];
-    }
-    const actions = [];
-    for (let i = 0; i < numActions; i++) {
-      const actionTypeId = codec.unpackByte();
-      let action;
-      let codecAction;
-      if (actionTypeId === TRANSFER_ID) {
-        const [actionTransfer, codecActionTransfer] = Transfer.fromBytesCodec(codec);
-        if (codecActionTransfer.getError()) {
-          return [
-            new _Transaction(base, []),
-            new Error(`Failed to unpack transfer action: ${err2}`)
-          ];
-        }
-        codecAction = codecActionTransfer;
-        action = actionTransfer;
-      } else {
-        return [
-          new _Transaction(base, []),
-          new Error(`Invalid action type: ${actionTypeId}`)
-        ];
-      }
-      codec = codecAction;
-      actions.push(action);
-    }
-    const transaction = new _Transaction(base, actions);
-    if (codec.getOffset() < bytes3.length) {
-      const authTypeId = codec.unpackByte();
-      let auth;
-      if (authTypeId === BLS_ID) {
-        const authBytes = codec.unpackFixedBytes(BlsAuthSize);
-        [auth, err2] = BLS.fromBytes(authBytes);
-        if (err2) {
-          return [transaction, new Error(`Failed to unpack BLS auth: ${err2}`)];
-        }
-      } else if (authTypeId === ED25519_ID) {
-        const authBytes = codec.unpackFixedBytes(Ed25519AuthSize);
-        [auth, err2] = ED25519.fromBytes(authBytes);
-        if (err2) {
-          return [
-            transaction,
-            new Error(`Failed to unpack ED25519 auth: ${err2}`)
-          ];
-        }
-      } else {
-        return [transaction, new Error(`Invalid auth type: ${authTypeId}`)];
-      }
-      transaction.auth = auth;
-    }
-    transaction.bytes = bytes3;
-    return [transaction, codec.getError()];
+  // .x, .y will call expensive toAffine.
+  get y() {
+    return this.toAffine().y;
   }
-  id() {
-    return Ve.fromBytes(ToID(this.bytes))[0];
+  // Should be used with care.
+  equals(other) {
+    const { ex: X1, ey: Y1, ez: Z1 } = this;
+    const { ex: X2, ey: Y2, ez: Z2 } = isPoint(other);
+    const X1Z2 = mod2(X1 * Z2), X2Z1 = mod2(X2 * Z1);
+    const Y1Z2 = mod2(Y1 * Z2), Y2Z1 = mod2(Y2 * Z1);
+    return X1Z2 === X2Z1 && Y1Z2 === Y2Z1;
+  }
+  is0() {
+    return this.equals(I2);
+  }
+  negate() {
+    return new _Point(mod2(-this.ex), this.ey, this.ez, mod2(-this.et));
+  }
+  double() {
+    const { ex: X1, ey: Y1, ez: Z1 } = this;
+    const { a } = CURVE;
+    const A2 = mod2(X1 * X1);
+    const B2 = mod2(Y1 * Y1);
+    const C2 = mod2(2n * mod2(Z1 * Z1));
+    const D2 = mod2(a * A2);
+    const x1y1 = X1 + Y1;
+    const E2 = mod2(mod2(x1y1 * x1y1) - A2 - B2);
+    const G3 = D2 + B2;
+    const F2 = G3 - C2;
+    const H2 = D2 - B2;
+    const X3 = mod2(E2 * F2);
+    const Y3 = mod2(G3 * H2);
+    const T3 = mod2(E2 * H2);
+    const Z3 = mod2(F2 * G3);
+    return new _Point(X3, Y3, Z3, T3);
+  }
+  add(other) {
+    const { ex: X1, ey: Y1, ez: Z1, et: T1 } = this;
+    const { ex: X2, ey: Y2, ez: Z2, et: T2 } = isPoint(other);
+    const { a, d: d2 } = CURVE;
+    const A2 = mod2(X1 * X2);
+    const B2 = mod2(Y1 * Y2);
+    const C2 = mod2(T1 * d2 * T2);
+    const D2 = mod2(Z1 * Z2);
+    const E2 = mod2((X1 + Y1) * (X2 + Y2) - A2 - B2);
+    const F2 = mod2(D2 - C2);
+    const G3 = mod2(D2 + C2);
+    const H2 = mod2(B2 - a * A2);
+    const X3 = mod2(E2 * F2);
+    const Y3 = mod2(G3 * H2);
+    const T3 = mod2(E2 * H2);
+    const Z3 = mod2(F2 * G3);
+    return new _Point(X3, Y3, Z3, T3);
+  }
+  mul(n, safe = true) {
+    if (n === 0n)
+      return safe === true ? err("cannot multiply by 0") : I2;
+    if (!(typeof n === "bigint" && 0n < n && n < N2))
+      err("invalid scalar, must be < L");
+    if (!safe && this.is0() || n === 1n)
+      return this;
+    if (this.equals(G2))
+      return wNAF2(n).p;
+    let p2 = I2, f3 = G2;
+    for (let d2 = this; n > 0n; d2 = d2.double(), n >>= 1n) {
+      if (n & 1n)
+        p2 = p2.add(d2);
+      else if (safe)
+        f3 = f3.add(d2);
+    }
+    return p2;
+  }
+  multiply(scalar) {
+    return this.mul(scalar);
+  }
+  // Aliases for compatibilty
+  clearCofactor() {
+    return this.mul(BigInt(CURVE.h), false);
+  }
+  // multiply by cofactor
+  isSmallOrder() {
+    return this.clearCofactor().is0();
+  }
+  // check if P is small order
+  isTorsionFree() {
+    let p2 = this.mul(N2 / 2n, false).double();
+    if (N2 % 2n)
+      p2 = p2.add(this);
+    return p2.is0();
+  }
+  toAffine() {
+    const { ex: x2, ey: y2, ez: z2 } = this;
+    if (this.equals(I2))
+      return { x: 0n, y: 1n };
+    const iz = invert2(z2);
+    if (mod2(z2 * iz) !== 1n)
+      err("invalid inverse");
+    return { x: mod2(x2 * iz), y: mod2(y2 * iz) };
+  }
+  toRawBytes() {
+    const { x: x2, y: y2 } = this.toAffine();
+    const b2 = n2b_32LE(y2);
+    b2[31] |= x2 & 1n ? 128 : 0;
+    return b2;
+  }
+  toHex() {
+    return b2h(this.toRawBytes());
+  }
+  // encode to hex string
+};
+Point.BASE = new Point(Gx, Gy, 1n, mod2(Gx * Gy));
+Point.ZERO = new Point(0n, 1n, 1n, 0n);
+var { BASE: G2, ZERO: I2 } = Point;
+var padh = (num, pad) => num.toString(16).padStart(pad, "0");
+var b2h = (b2) => Array.from(b2).map((e) => padh(e, 2)).join("");
+var h2b2 = (hex2) => {
+  const l2 = hex2.length;
+  if (!str(hex2) || l2 % 2)
+    err("hex invalid 1");
+  const arr = u8n2(l2 / 2);
+  for (let i = 0; i < arr.length; i++) {
+    const j2 = i * 2;
+    const h2 = hex2.slice(j2, j2 + 2);
+    const b2 = Number.parseInt(h2, 16);
+    if (Number.isNaN(b2) || b2 < 0)
+      err("hex invalid 2");
+    arr[i] = b2;
+  }
+  return arr;
+};
+var n2b_32LE = (num) => h2b2(padh(num, 32 * 2)).reverse();
+var b2n_LE = (b2) => BigInt("0x" + b2h(u8n2(au8(b2)).reverse()));
+var concatB = (...arrs) => {
+  const r = u8n2(arrs.reduce((sum, a) => sum + au8(a).length, 0));
+  let pad = 0;
+  arrs.forEach((a) => {
+    r.set(a, pad);
+    pad += a.length;
+  });
+  return r;
+};
+var invert2 = (num, md = P2) => {
+  if (num === 0n || md <= 0n)
+    err("no inverse n=" + num + " mod=" + md);
+  let a = mod2(num, md), b2 = md, x2 = 0n, y2 = 1n, u2 = 1n, v2 = 0n;
+  while (a !== 0n) {
+    const q2 = b2 / a, r = b2 % a;
+    const m2 = x2 - u2 * q2, n = y2 - v2 * q2;
+    b2 = a, a = r, x2 = u2, y2 = v2, u2 = m2, v2 = n;
+  }
+  return b2 === 1n ? mod2(x2, md) : err("no inverse");
+};
+var pow2 = (x2, power) => {
+  let r = x2;
+  while (power-- > 0n) {
+    r *= r;
+    r %= P2;
+  }
+  return r;
+};
+var pow_2_252_3 = (x2) => {
+  const x22 = x2 * x2 % P2;
+  const b2 = x22 * x2 % P2;
+  const b4 = pow2(b2, 2n) * b2 % P2;
+  const b5 = pow2(b4, 1n) * x2 % P2;
+  const b10 = pow2(b5, 5n) * b5 % P2;
+  const b20 = pow2(b10, 10n) * b10 % P2;
+  const b40 = pow2(b20, 20n) * b20 % P2;
+  const b80 = pow2(b40, 40n) * b40 % P2;
+  const b160 = pow2(b80, 80n) * b80 % P2;
+  const b240 = pow2(b160, 80n) * b80 % P2;
+  const b250 = pow2(b240, 10n) * b10 % P2;
+  const pow_p_5_8 = pow2(b250, 2n) * x2 % P2;
+  return { pow_p_5_8, b2 };
+};
+var RM1 = 19681161376707505956807079304988542015446066515923890162744021073123829784752n;
+var uvRatio = (u2, v2) => {
+  const v3 = mod2(v2 * v2 * v2);
+  const v7 = mod2(v3 * v3 * v2);
+  const pow3 = pow_2_252_3(u2 * v7).pow_p_5_8;
+  let x2 = mod2(u2 * v3 * pow3);
+  const vx2 = mod2(v2 * x2 * x2);
+  const root1 = x2;
+  const root2 = mod2(x2 * RM1);
+  const useRoot1 = vx2 === u2;
+  const useRoot2 = vx2 === mod2(-u2);
+  const noRoot = vx2 === mod2(-u2 * RM1);
+  if (useRoot1)
+    x2 = root1;
+  if (useRoot2 || noRoot)
+    x2 = root2;
+  if ((mod2(x2) & 1n) === 1n)
+    x2 = mod2(-x2);
+  return { isValid: useRoot1 || useRoot2, value: x2 };
+};
+var modL_LE = (hash) => mod2(b2n_LE(hash), N2);
+var _shaS;
+var sha512a = (...m2) => etc.sha512Async(...m2);
+var sha512s = (...m2) => (
+  // Sync SHA512, not set by default
+  typeof _shaS === "function" ? _shaS(...m2) : err("etc.sha512Sync not set")
+);
+var hash2extK = (hashed) => {
+  const head = hashed.slice(0, 32);
+  head[0] &= 248;
+  head[31] &= 127;
+  head[31] |= 64;
+  const prefix = hashed.slice(32, 64);
+  const scalar = modL_LE(head);
+  const point = G2.mul(scalar);
+  const pointBytes = point.toRawBytes();
+  return { head, prefix, scalar, point, pointBytes };
+};
+var getExtendedPublicKey = (priv) => hash2extK(sha512s(toU8(priv, 32)));
+var getPublicKey = (priv) => getExtendedPublicKey(priv).pointBytes;
+function hashFinish(asynchronous, res) {
+  if (asynchronous)
+    return sha512a(res.hashable).then(res.finish);
+  return res.finish(sha512s(res.hashable));
+}
+var _sign = (e, rBytes, msg) => {
+  const { pointBytes: P3, scalar: s } = e;
+  const r = modL_LE(rBytes);
+  const R2 = G2.mul(r).toRawBytes();
+  const hashable = concatB(R2, P3, msg);
+  const finish = (hashed) => {
+    const S2 = mod2(r + modL_LE(hashed) * s, N2);
+    return au8(concatB(R2, n2b_32LE(S2)), 64);
+  };
+  return { hashable, finish };
+};
+var sign = (msg, privKey) => {
+  const m2 = toU8(msg);
+  const e = getExtendedPublicKey(privKey);
+  const rBytes = sha512s(e.prefix, m2);
+  return hashFinish(false, _sign(e, rBytes, m2));
+};
+var dvo = { zip215: true };
+var _verify = (sig, msg, pub, opts = dvo) => {
+  msg = toU8(msg);
+  sig = toU8(sig, 64);
+  const { zip215 } = opts;
+  let A2, R2, s, SB, hashable = new Uint8Array();
+  try {
+    A2 = Point.fromHex(pub, zip215);
+    R2 = Point.fromHex(sig.slice(0, 32), zip215);
+    s = b2n_LE(sig.slice(32, 64));
+    SB = G2.mul(s, false);
+    hashable = concatB(R2.toRawBytes(), A2.toRawBytes(), msg);
+  } catch (error) {
+  }
+  const finish = (hashed) => {
+    if (SB == null)
+      return false;
+    if (!zip215 && A2.isSmallOrder())
+      return false;
+    const k2 = modL_LE(hashed);
+    const RkA = R2.add(A2.mul(k2, false));
+    return RkA.add(SB.negate()).clearCofactor().is0();
+  };
+  return { hashable, finish };
+};
+var verify = (s, m2, p2, opts = dvo) => hashFinish(false, _verify(s, m2, p2, opts));
+var cr2 = () => (
+  // We support: 1) browsers 2) node.js 19+
+  typeof globalThis === "object" && "crypto" in globalThis ? globalThis.crypto : void 0
+);
+var etc = {
+  bytesToHex: b2h,
+  hexToBytes: h2b2,
+  concatBytes: concatB,
+  mod: mod2,
+  invert: invert2,
+  randomBytes: (len = 32) => {
+    const crypto3 = cr2();
+    if (!crypto3 || !crypto3.getRandomValues)
+      err("crypto.getRandomValues must be defined");
+    return crypto3.getRandomValues(u8n2(len));
+  },
+  sha512Async: async (...messages) => {
+    const crypto3 = cr2();
+    if (!crypto3 || !crypto3.subtle)
+      err("crypto.subtle or etc.sha512Async must be defined");
+    const m2 = concatB(...messages);
+    return u8n2(await crypto3.subtle.digest("SHA-512", m2.buffer));
+  },
+  sha512Sync: void 0
+  // Actual logic below
+};
+Object.defineProperties(etc, { sha512Sync: {
+  configurable: false,
+  get() {
+    return _shaS;
+  },
+  set(f3) {
+    if (!_shaS)
+      _shaS = f3;
+  }
+} });
+var W2 = 8;
+var precompute = () => {
+  const points = [];
+  const windows = 256 / W2 + 1;
+  let p2 = G2, b2 = p2;
+  for (let w2 = 0; w2 < windows; w2++) {
+    b2 = p2;
+    points.push(b2);
+    for (let i = 1; i < 2 ** (W2 - 1); i++) {
+      b2 = b2.add(p2);
+      points.push(b2);
+    }
+    p2 = b2.double();
+  }
+  return points;
+};
+var Gpows = void 0;
+var wNAF2 = (n) => {
+  const comp = Gpows || (Gpows = precompute());
+  const neg = (cnd, p3) => {
+    let n2 = p3.negate();
+    return cnd ? n2 : p3;
+  };
+  let p2 = I2, f3 = G2;
+  const windows = 1 + 256 / W2;
+  const wsize = 2 ** (W2 - 1);
+  const mask = BigInt(2 ** W2 - 1);
+  const maxNum = 2 ** W2;
+  const shiftBy = BigInt(W2);
+  for (let w2 = 0; w2 < windows; w2++) {
+    const off = w2 * wsize;
+    let wbits = Number(n & mask);
+    n >>= shiftBy;
+    if (wbits > wsize) {
+      wbits -= maxNum;
+      n += 1n;
+    }
+    const off1 = off, off2 = off + Math.abs(wbits) - 1;
+    const cnd1 = w2 % 2 !== 0, cnd2 = wbits < 0;
+    if (wbits === 0) {
+      f3 = f3.add(neg(cnd1, comp[off1]));
+    } else {
+      p2 = p2.add(neg(cnd2, comp[off2]));
+    }
+  }
+  return { p: p2, f: f3 };
+};
+
+// src/crypto/ed25519.ts
+import { createHash as createHash2 } from "crypto";
+var PUBLIC_KEY_LENGTH = 32;
+var PRIVATE_KEY_LENGTH = 32;
+var SIGNATURE_LENGTH = 64;
+function secretKeyFromBytes(skBytes) {
+  return typeof skBytes === "string" ? jo.hexToBuffer(skBytes) : skBytes;
+}
+function secretKeyToBytes(sk) {
+  return sk;
+}
+function publicKeyFromBytes(pkBytes) {
+  return typeof pkBytes === "string" ? jo.hexToBuffer(pkBytes) : pkBytes;
+}
+function publicKeyToBytes(pk) {
+  return pk;
+}
+function signatureFromBytes(sigBytes) {
+  return sigBytes;
+}
+function signatureToBytes(sig) {
+  return sig;
+}
+function verify2(pk, sig, msg) {
+  const message = typeof msg === "string" ? jo.hexToBuffer(msg) : msg;
+  return verify(sig, message, pk);
+}
+function sign2(msg, sk) {
+  const message = typeof msg === "string" ? jo.hexToBuffer(msg) : msg;
+  return sign(message, sk);
+}
+etc.sha512Sync = (...messages) => {
+  const hash = createHash2("sha512");
+  for (const message of messages) {
+    hash.update(message);
+  }
+  return new Uint8Array(hash.digest());
+};
+
+// src/utils/hex.ts
+function isHex(str2) {
+  const hexRegex = /^[0-9a-fA-F]+$/;
+  return hexRegex.test(str2);
+}
+function toHex(b2) {
+  return Buffer.from(b2).toString("hex");
+}
+function loadHex(s, expectedSize) {
+  const bytes3 = Buffer.from(s, "hex");
+  if (expectedSize !== -1 && bytes3.length !== expectedSize) {
+    throw new Error("Invalid size");
+  }
+  return new Uint8Array(bytes3);
+}
+
+// src/auth/ed25519.ts
+var Ed25519AuthSize = PUBLIC_KEY_LENGTH + SIGNATURE_LENGTH;
+var ED25519 = class _ED25519 {
+  signer;
+  signature;
+  addr = EMPTY_ADDRESS;
+  constructor(signer, signature) {
+    this.signer = signer;
+    this.signature = signature;
+  }
+  address() {
+    if (bufferEquals(this.addr.toBytes(), EMPTY_ADDRESS.toBytes())) {
+      this.addr = Address.newAddress(ED25519_ID, this.signer);
+    }
+    return this.addr;
+  }
+  getTypeId() {
+    return ED25519_ID;
+  }
+  async verify(message) {
+    return verify2(this.signer, this.signature, message);
+  }
+  actor() {
+    return this.address();
+  }
+  sponsor() {
+    return this.address();
   }
   size() {
-    let size = this.base.size() + BYTE_LEN;
-    this.actions.forEach((action) => {
-      const actionSize = BYTE_LEN + action.size();
-      size += actionSize;
-    });
-    if (this.auth) {
-      const authSize = BYTE_LEN + this.auth.size();
-      size += authSize;
-    }
-    return size;
+    return Ed25519AuthSize;
+  }
+  toBytes() {
+    const size = this.size();
+    const codec = Codec.newWriter(size, size);
+    codec.packFixedBytes(this.signer);
+    codec.packFixedBytes(this.signature);
+    return codec.toBytes();
+  }
+  static fromBytes(bytes3) {
+    const codec = Codec.newReader(bytes3, bytes3.length);
+    const signer = codec.unpackFixedBytes(PUBLIC_KEY_LENGTH);
+    const signature = codec.unpackFixedBytes(SIGNATURE_LENGTH);
+    return [new _ED25519(signer, signature), codec.getError()];
+  }
+  static fromBytesCodec(codec) {
+    const codecResult = codec;
+    const signer = codecResult.unpackFixedBytes(PUBLIC_KEY_LENGTH);
+    const signature = codecResult.unpackFixedBytes(SIGNATURE_LENGTH);
+    return [new _ED25519(signer, signature), codecResult];
+  }
+  static publicKeyToHex(publicKey) {
+    return Buffer.from(publicKey).toString("hex");
+  }
+  static hexToPublicKey(hex2) {
+    return Buffer.from(hex2, "hex");
   }
 };
-
-// src/services/rpc.ts
-var RpcService = class extends Api {
-  constructor(config) {
-    super(
-      config.baseApiUrl,
-      `/ext/bc/${config.blockchainId}/${COREAPI_PATH}`,
-      COREAPI_METHOD_PREFIX
-    );
-    this.config = config;
-  }
-  ping() {
-    return this.callRpc("ping");
-  }
-  // Retrieve network IDs
-  getNetworkInfo() {
-    return this.callRpc("network");
-  }
-  // Get information about the last accepted block
-  getLastAccepted() {
-    return this.callRpc("lastAccepted");
-  }
-  // Fetch current unit prices for transactions
-  getUnitPrices() {
-    return this.callRpc("unitPrices");
-  }
-  // Fetch warp signatures associated with a transaction
-  getWarpSignatures(txID) {
-    return this.callRpc("getWarpSignatures", {
-      txID
-    });
-  }
-  // Submit a transaction to the network
-  async submitTransaction(tx) {
-    const txBase64 = Array.from(tx);
-    return this.callRpc("submitTx", { tx: txBase64 });
-  }
-  async generateTransaction(genesisInfo, actions, authFactory) {
-    try {
-      const timestamp = getUnixRMilli(
-        Date.now(),
-        genesisInfo.validityWindow
-      );
-      const chainId = Ve.fromString(this.config.blockchainId);
-      const unitPrices = await this.getUnitPrices();
-      const units = estimateUnits(genesisInfo, actions, authFactory);
-      const [maxFee, error] = mulSum(unitPrices.unitPrices, units);
-      if (error) {
-        return {
-          submit: async () => {
-            throw new Error("Transaction failed, cannot submit.");
-          },
-          txSigned: {},
-          err: error
-        };
-      }
-      const base = new BaseTx(timestamp, chainId, maxFee);
-      const tx = new Transaction(base, actions);
-      const [txSigned, err2] = tx.sign(authFactory);
-      if (err2) {
-        return {
-          submit: async () => {
-            throw new Error("Transaction failed, cannot submit.");
-          },
-          txSigned: {},
-          err: err2
-        };
-      }
-      const submit = async () => {
-        const [txBytes, err3] = txSigned.toBytes();
-        if (err3) {
-          throw new Error(`Transaction failed, cannot submit. Err: ${err3}`);
-        }
-        return await this.submitTransaction(txBytes);
-      };
-      return { submit, txSigned, err: void 0 };
-    } catch (error) {
-      return {
-        submit: async () => {
-          throw new Error("Transaction failed, cannot submit.");
-        },
-        txSigned: {},
-        err: error
-      };
+var ED25519Factory = class _ED25519Factory {
+  privateKey;
+  constructor(privateKey) {
+    let privKey = randomBytes(32);
+    if (privateKey) {
+      privKey = privateKey;
     }
+    this.privateKey = privKey;
+  }
+  sign(message) {
+    const publicKey = getPublicKey(this.privateKey);
+    const signature = sign2(message, this.privateKey);
+    return new ED25519(publicKey, signature);
+  }
+  computeUnits() {
+    return ED25519_COMPUTE_UNITS;
+  }
+  bandwidth() {
+    return Ed25519AuthSize;
+  }
+  static generateKeyPair() {
+    const privateKey = new _ED25519Factory().privateKey;
+    const publicKey = getPublicKey(privateKey);
+    return { privateKey, publicKey };
+  }
+  static publicKeyFromPrivateKey(privateKey) {
+    return getPublicKey(privateKey);
+  }
+  static privateKeyToHex(privateKey) {
+    return Buffer.from(privateKey).toString("hex");
+  }
+  static hexToPrivateKey(hex2) {
+    let privateKeyBytes = Buffer.from(hex2, "hex");
+    if (privateKeyBytes.length === PRIVATE_KEY_LENGTH + PUBLIC_KEY_LENGTH) {
+      privateKeyBytes = privateKeyBytes.subarray(0, PRIVATE_KEY_LENGTH);
+      return loadHex(toHex(privateKeyBytes), PRIVATE_KEY_LENGTH);
+    } else if (privateKeyBytes.length !== PRIVATE_KEY_LENGTH) {
+      throw new Error("Invalid combined key size");
+    }
+    return loadHex(hex2, PRIVATE_KEY_LENGTH);
   }
 };
-
-// src/actions/index.ts
-var actions_exports = {};
-__export(actions_exports, {
-  Transfer: () => Transfer,
-  TransferTxSize: () => TransferTxSize
-});
-
-// src/auth/index.ts
-var auth_exports = {};
-__export(auth_exports, {
-  BLS: () => BLS,
-  BLSFactory: () => BLSFactory,
-  BlsAuthSize: () => BlsAuthSize,
-  ED25519: () => ED25519,
-  ED25519Factory: () => ED25519Factory,
-  Ed25519AuthSize: () => Ed25519AuthSize,
-  getAuth: () => getAuth,
-  getAuthFactory: () => getAuthFactory
-});
 
 // src/utils/base64.ts
 function isBase64(str2) {
@@ -11117,6 +11126,46 @@ function getAuth(authType, signer, signature) {
     throw new Error("Unsupported key type");
   }
 }
+
+// src/codec/index.ts
+var codec_exports = {};
+__export(codec_exports, {
+  Codec: () => Codec,
+  TypeParser: () => TypeParser
+});
+
+// src/codec/typeParser.ts
+var errTooManyItems = new Error("Too many items");
+var errDuplicateItem = new Error("Duplicate item");
+var TypeParser = class {
+  typeToIndex;
+  indexToDecoder;
+  constructor() {
+    this.typeToIndex = /* @__PURE__ */ new Map();
+    this.indexToDecoder = /* @__PURE__ */ new Map();
+  }
+  // Register a new type into TypeParser
+  register(id, f3, y2) {
+    if (this.indexToDecoder.size === MaxUint8 + 1) {
+      throw errTooManyItems;
+    }
+    if (this.indexToDecoder.has(id)) {
+      throw errDuplicateItem;
+    }
+    this.indexToDecoder.set(id, { f: f3, y: y2 });
+  }
+  // LookupIndex returns the decoder function and success of lookup of [index]
+  lookupIndex(index) {
+    const decoder = this.indexToDecoder.get(index);
+    if (decoder) {
+      return [decoder.f, true];
+    }
+    const noop = (codec) => {
+      return [void 0, codec];
+    };
+    return [noop, false];
+  }
+};
 
 // src/common/index.ts
 var common_exports = {};
@@ -11254,6 +11303,7 @@ export {
   HyperchainSDK,
   actions_exports as actions,
   auth_exports as auth,
+  codec_exports as codec,
   common_exports as common,
   config_exports as config,
   constants_exports as consts,
@@ -11275,9 +11325,6 @@ export {
   (*! micro-eth-signer - MIT License (c) 2021 Paul Miller (paulmillr.com) *)
   (*! noble-secp256k1 - MIT License (c) 2019 Paul Miller (paulmillr.com) *)
 
-@noble/ed25519/index.js:
-  (*! noble-ed25519 - MIT License (c) 2019 Paul Miller (paulmillr.com) *)
-
 @noble/hashes/esm/utils.js:
   (*! noble-hashes - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
 
@@ -11295,5 +11342,8 @@ export {
 
 @noble/curves/esm/bls12-381.js:
   (*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
+
+@noble/ed25519/index.js:
+  (*! noble-ed25519 - MIT License (c) 2019 Paul Miller (paulmillr.com) *)
 */
 //# sourceMappingURL=index.js.map

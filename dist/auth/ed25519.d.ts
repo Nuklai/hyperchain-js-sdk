@@ -1,3 +1,4 @@
+import { Codec } from '../codec/codec';
 import { PublicKey, SecretKey, Signature } from '../crypto/ed25519';
 import { Address } from '../utils/address';
 import { Auth, AuthFactory } from './auth';
@@ -15,6 +16,7 @@ export declare class ED25519 implements Auth {
     size(): number;
     toBytes(): Uint8Array;
     static fromBytes(bytes: Uint8Array): [ED25519, Error?];
+    static fromBytesCodec(codec: Codec): [ED25519, Codec];
     static publicKeyToHex(publicKey: PublicKey): string;
     static hexToPublicKey(hex: string): PublicKey;
 }

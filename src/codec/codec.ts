@@ -13,8 +13,8 @@ import {
   MaxStringLen,
   SHORT_LEN
 } from '../constants/consts'
-import { Address } from './address'
-import { bufferEquals } from './utils'
+import { Address } from '../utils/address'
+import { bufferEquals } from '../utils/utils'
 
 const ErrInsufficientLength = new Error(
   'packer has insufficient length for input'
@@ -23,9 +23,8 @@ const errNegativeOffset = new Error('negative offset')
 const errInvalidInput = new Error('input does not match expected format')
 const errBadBool = new Error('unexpected value when unpacking bool')
 const errOversized = new Error('size is larger than limit')
-const errFieldNotPopulated = new Error('field is not populated')
 
-class Codec {
+export class Codec {
   private buffer: Uint8Array
   private offset: number
   private maxSize: number
@@ -305,5 +304,3 @@ class Codec {
     return this.offset === this.buffer.length
   }
 }
-
-export { Codec }
