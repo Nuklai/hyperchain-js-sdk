@@ -4,6 +4,7 @@
 import { Id } from '@avalabs/avalanchejs'
 import { Action } from '../actions/action'
 import { AuthFactory } from '../auth/auth'
+import { BaseTx } from '../chain/baseTx'
 import { ActionRegistry, AuthRegistry } from '../chain/dependencies'
 import { estimateUnits, mulSum } from '../chain/fees'
 import { Transaction } from '../chain/transaction'
@@ -19,7 +20,6 @@ import {
 } from '../common/models'
 import { NodeConfig } from '../config'
 import { COREAPI_METHOD_PREFIX, COREAPI_PATH } from '../constants/endpoints'
-import { BaseTx } from '../transactions/baseTx'
 import { getUnixRMilli } from '../utils/utils'
 
 export class RpcService extends Api {

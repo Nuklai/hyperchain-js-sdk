@@ -6,8 +6,8 @@ import { Action } from '../actions/action'
 import { Auth, AuthFactory } from '../auth/auth'
 import { Codec } from '../codec/codec'
 import { BYTE_LEN, NETWORK_SIZE_LIMIT } from '../constants/consts'
-import { BaseTx, BaseTxSize } from '../transactions/baseTx'
 import { ToID } from '../utils/hashing'
+import { BaseTx, BaseTxSize } from './baseTx'
 import { ActionRegistry, AuthRegistry } from './dependencies'
 
 export class Transaction {
