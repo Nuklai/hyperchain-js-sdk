@@ -47,3 +47,30 @@ export type GetWarpSignaturesResponse = {
   message: UnsignedMessage
   signatures: WarpSignature[]
 }
+
+export type CustomAllocation = {
+  address: string
+  balance: number
+}
+
+export type Genesis = {
+  stateBranchFactor: number
+  minBlockGap: number
+  minEmptyBlockGap: number
+  minUnitPrice: Uint8Array
+  unitPriceChangeDenominator: Uint8Array
+  windowTargetUnits: Uint8Array
+  maxBlockUnits: Uint8Array
+  validityWindow: number
+  baseUnits: number
+  baseWarpUnits: number
+  warpUnitsPerSigner: number
+  outgoingWarpComputeUnits: number
+  storageKeyReadUnits: number
+  storageValueReadUnits: number
+  storageKeyAllocateUnits: number
+  storageValueAllocateUnits: number
+  storageKeyWriteUnits: number
+  storageValueWriteUnits: number
+  customAllocation: CustomAllocation[]
+}

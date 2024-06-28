@@ -3,7 +3,7 @@
 
 import { TypeSymbols, utils } from '@avalabs/avalanchejs'
 import { ADDRESS_LEN } from '../constants/consts'
-import { BLS_ID, ED25519_ID, HRP, SECP256R1_ID } from '../constants/nuklaivm'
+import { BLS_ID, ED25519_ID, HRP, SECP256R1_ID } from '../constants/hypervm'
 import { ToID } from './hashing'
 
 export class Address {

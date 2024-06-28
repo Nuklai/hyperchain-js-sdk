@@ -3,7 +3,7 @@
 
 import { Id } from '@avalabs/avalanchejs'
 import { EMPTY_ID, MillisecondsPerSecond } from '../constants/consts'
-import { SYMBOL } from '../constants/nuklaivm'
+import { SYMBOL } from '../constants/hypervm'
 
 export function parseBalance(
   amount: string | number,

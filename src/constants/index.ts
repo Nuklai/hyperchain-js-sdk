@@ -1,3 +1,3 @@
 export * from './consts'
 export * from './endpoints'
-export * from './nuklaivm'
+export * from './hypervm'

@@ -8,7 +8,7 @@ import {
   STORAGE_BALANCE_CHUNKS,
   TRANSFER_COMPUTE_UNITS,
   TRANSFER_ID
-} from '../constants/nuklaivm'
+} from '../constants/hypervm'
 import { Address } from '../utils/address'
 import { Codec } from '../utils/codec'
 import { toAssetID } from '../utils/utils'

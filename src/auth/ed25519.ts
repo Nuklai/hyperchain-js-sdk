@@ -4,7 +4,7 @@
 import { getPublicKey } from '@noble/ed25519'
 import { randomBytes } from '@noble/hashes/utils'
 import { EMPTY_ADDRESS } from '../constants/consts'
-import { ED25519_COMPUTE_UNITS, ED25519_ID } from '../constants/nuklaivm'
+import { ED25519_COMPUTE_UNITS, ED25519_ID } from '../constants/hypervm'
 import {
   PRIVATE_KEY_LENGTH,
   PUBLIC_KEY_LENGTH,

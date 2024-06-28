@@ -6,35 +6,28 @@ import { Action } from '../actions/action'
 import { AuthFactory } from '../auth/auth'
 import { Api } from '../common/baseApi'
 import {
+  Genesis,
   GetLastAcceptedResponse,
   GetNetworkInfoResponse,
   GetUnitPricesResponse,
   GetWarpSignaturesResponse,
   PingResponse,
   SubmitTransactionResponse
-} from '../common/hyperApiModels'
-import { GetGenesisInfoResponse } from '../common/nuklaiApiModels'
+} from '../common/models'
 import { NodeConfig } from '../config'
-import {
-  NUKLAI_COREAPI_METHOD_PREFIX,
-  NUKLAI_COREAPI_PATH
-} from '../constants/endpoints'
+import { COREAPI_METHOD_PREFIX, COREAPI_PATH } from '../constants/endpoints'
 import { BaseTx } from '../transactions/baseTx'
 import { estimateUnits, mulSum } from '../transactions/fees'
 import { Transaction } from '../transactions/transaction'
 import { getUnixRMilli } from '../utils/utils'
-import { GenesisService } from './nuklaivm/genesisService'
 
-export class HyperApiService extends Api {
-  private genesisApiService: GenesisService
-
+export class RpcService extends Api {
   constructor(protected config: NodeConfig) {
     super(
       config.baseApiUrl,
-      `/ext/bc/${config.blockchainId}/${NUKLAI_COREAPI_PATH}`,
-      NUKLAI_COREAPI_METHOD_PREFIX
+      `/ext/bc/${config.blockchainId}/${COREAPI_PATH}`,
+      COREAPI_METHOD_PREFIX
     )
-    this.genesisApiService = new GenesisService(config)
   }
 
   ping(): Promise<PingResponse> {
@@ -71,6 +64,7 @@ export class HyperApiService extends Api {
   }
 
   async generateTransaction(
+    genesisInfo: Genesis,
     actions: Action[],
     authFactory: AuthFactory
   ): Promise<{
@@ -81,17 +75,15 @@ export class HyperApiService extends Api {
     try {
       // Construct the base transaction
       // Set timestamp
-      const genesisInfo: GetGenesisInfoResponse =
-        await this.genesisApiService.getGenesisInfo()
       const timestamp: bigint = getUnixRMilli(
         Date.now(),
-        genesisInfo.genesis.validityWindow
+        genesisInfo.validityWindow
       )
       // Set chain ID
       const chainId = Id.fromString(this.config.blockchainId)
       // Set maxFee
       const unitPrices: GetUnitPricesResponse = await this.getUnitPrices()
-      const units = estimateUnits(genesisInfo.genesis, actions, authFactory)
+      const units = estimateUnits(genesisInfo, actions, authFactory)
       const [maxFee, error] = mulSum(unitPrices.unitPrices, units)
       if (error) {
         return {

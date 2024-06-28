@@ -1,13 +1,13 @@
 // Copyright (C) 2024, Nuklai. All rights reserved.
 // See the file LICENSE for licensing terms.
 
+import bigInt from 'big-integer'
 import { Action } from '../actions/action'
 import { AuthFactory } from '../auth/auth'
-import bigInt from 'big-integer'
-import { BaseTxSize } from './baseTx'
+import { Genesis } from '../common/models'
 import { BYTE_LEN, UINT8_LEN } from '../constants/consts'
-import { STORAGE_BALANCE_CHUNKS } from '../constants/nuklaivm'
-import { Genesis } from '../common/nuklaiApiModels'
+import { STORAGE_BALANCE_CHUNKS } from '../constants/hypervm'
+import { BaseTxSize } from './baseTx'
 
 type Dimension = number[]
 const FeeDimensions: number = 5

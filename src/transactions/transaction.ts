@@ -4,17 +4,11 @@
 import { Id } from '@avalabs/avalanchejs'
 import { ED25519, Ed25519AuthSize } from 'auth/ed25519'
 import { Action } from '../actions/action'
-import { CreateAsset } from '../actions/createAsset'
 import { Transfer } from '../actions/transfer'
 import { Auth, AuthFactory } from '../auth/auth'
 import { BLS, BlsAuthSize } from '../auth/bls'
 import { BYTE_LEN, NETWORK_SIZE_LIMIT } from '../constants/consts'
-import {
-  BLS_ID,
-  CREATEASSET_ID,
-  ED25519_ID,
-  TRANSFER_ID
-} from '../constants/nuklaivm'
+import { BLS_ID, ED25519_ID, TRANSFER_ID } from '../constants/hypervm'
 import { Codec } from '../utils/codec'
 import { ToID } from '../utils/hashing'
 import { BaseTx, BaseTxSize } from './baseTx'
@@ -130,17 +124,6 @@ export class Transaction {
         }
         codecAction = codecActionTransfer
         action = actionTransfer
-      } else if (actionTypeId === CREATEASSET_ID) {
-        const [actionCreateAsset, codecActionCreateAsset] =
-          CreateAsset.fromBytesCodec(codec)
-        if (codecActionCreateAsset.getError()) {
-          return [
-            new Transaction(base, []),
-            new Error(`Failed to unpack create asset action: ${err}`)
-          ]
-        }
-        codecAction = codecActionCreateAsset
-        action = actionCreateAsset
       } else {
         return [
           new Transaction(base, []),
