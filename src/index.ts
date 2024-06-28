@@ -6,7 +6,7 @@ import { Transfer } from './actions/transfer'
 import { Auth } from './auth/auth'
 import { BLS } from './auth/bls'
 import { ED25519 } from './auth/ed25519'
-import { ActionRegistry, AuthRegistry } from './chain'
+import { ActionRegistry, AuthRegistry } from './chain/dependencies'
 import { TypeParser } from './codec/typeParser'
 import { NodeConfig } from './config'
 import {
