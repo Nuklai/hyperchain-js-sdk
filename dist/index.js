@@ -1284,14 +1284,6 @@ var require_BigInteger = __commonJS({
   }
 });
 
-// src/constants/endpoints.ts
-var MAINNET_PUBLIC_API_BASE_URL = "http://api-mainnet.nuklaivm-dev.net:9650";
-var TESTNET_PUBLIC_API_BASE_URL = "http://api-devnet.nuklaivm-dev.net:9650";
-var HYPERCHAIN_ID = "zepWp9PbeU9HLHebQ8gXkvxBYH5Bz4v8SoWXE6kyjjwNaMJfC";
-var HYPERCHAIN_ENDPOINT = `/ext/bc/${HYPERCHAIN_ID}`;
-var COREAPI_PATH = "coreapi";
-var COREAPI_METHOD_PREFIX = "hypersdk";
-
 // node_modules/@avalabs/avalanchejs/node_modules/@scure/base/lib/esm/index.js
 // @__NO_SIDE_EFFECTS__
 function assertNumber(n) {
@@ -6631,14 +6623,6 @@ var Pc = Object.freeze({ __proto__: null, PVMApi: class extends zo {
   return new rc(new qi(tn.fromNative(t.networkID, t.pBlockchainID, I3, x2, w2.memo), Ve.fromString(n), Ve.fromString(s), new pr(a), new pr(i), new pr(o), new pr(c), new pr(u2), new pr(f3), new rr(d2), new rr(l2), new rr(p2), new rr(h2), new mr(ve(m2.toString(16))), new rr(b2), Dr.fromNative(g2)), v2, B2);
 } });
 
-// src/chain/fees.ts
-var fees_exports = {};
-__export(fees_exports, {
-  estimateUnits: () => estimateUnits,
-  mulSum: () => mulSum
-});
-var import_big_integer = __toESM(require_BigInteger(), 1);
-
 // src/constants/hypervm.ts
 var HRP = "nuklai";
 var SYMBOL = "NAI";
@@ -7035,383 +7019,6 @@ var Codec = class _Codec {
   }
 };
 
-// src/transactions/baseTx.ts
-var BaseTxSize = 2 * UINT64_LEN + ID_LEN;
-var BaseTx = class _BaseTx {
-  timestamp;
-  chainId;
-  maxFee;
-  constructor(timestamp, chainId, maxFee) {
-    this.timestamp = timestamp;
-    this.chainId = chainId;
-    this.maxFee = maxFee;
-  }
-  size() {
-    return BaseTxSize;
-  }
-  toBytes() {
-    const codec = Codec.newWriter(this.size(), this.size());
-    codec.packInt64(this.timestamp);
-    const packedTimestampBytes = codec.toBytes();
-    codec.packID(this.chainId);
-    codec.packUint64(this.maxFee);
-    return codec.toBytes();
-  }
-  static fromBytes(bytes3) {
-    const codec = Codec.newReader(bytes3, bytes3.length);
-    const timestamp = codec.unpackInt64(true);
-    if (timestamp % MillisecondsPerSecond !== 0n) {
-      return [
-        new _BaseTx(0n, EMPTY_ID, 0n),
-        new Error("Timestamp is misaligned")
-      ];
-    }
-    const chainId = codec.unpackID(true);
-    const maxFee = codec.unpackUint64(true);
-    const baseTx = new _BaseTx(timestamp, chainId, maxFee);
-    return [baseTx, codec.getError()];
-  }
-};
-
-// src/chain/fees.ts
-var FeeDimensions = 5;
-function mul64(a, b2) {
-  return BigInt(a) * BigInt(b2);
-}
-function add64(a, b2) {
-  return a + b2;
-}
-function mulSum(a, b2) {
-  let val = 0n;
-  for (let i = 0; i < FeeDimensions; i++) {
-    try {
-      const v2 = mul64(a[i], b2[i]);
-      val = add64(val, v2);
-    } catch (err2) {
-      return [0n, err2];
-    }
-  }
-  return [val];
-}
-function estimateUnits(genesisInfo, actions, authFactory) {
-  let bandwidth = BaseTxSize;
-  let stateKeysMaxChunks = [];
-  let computeOp = (0, import_big_integer.default)(genesisInfo.baseUnits);
-  let readsOp = (0, import_big_integer.default)(0);
-  let allocatesOp = (0, import_big_integer.default)(0);
-  let writesOp = (0, import_big_integer.default)(0);
-  bandwidth += UINT8_LEN;
-  actions.forEach((action) => {
-    bandwidth += BYTE_LEN + action.size();
-    const actionStateKeysMaxChunks = action.stateKeysMaxChunks();
-    stateKeysMaxChunks = [...stateKeysMaxChunks, ...actionStateKeysMaxChunks];
-    computeOp = computeOp.add(action.computeUnits());
-  });
-  bandwidth += BYTE_LEN + authFactory.bandwidth();
-  const sponsorStateKeyMaxChunks = [STORAGE_BALANCE_CHUNKS];
-  stateKeysMaxChunks = [...stateKeysMaxChunks, ...sponsorStateKeyMaxChunks];
-  computeOp = computeOp.add(authFactory.computeUnits());
-  const compute = computeOp.valueOf();
-  for (const maxChunks of stateKeysMaxChunks) {
-    readsOp = readsOp.add(genesisInfo.storageKeyReadUnits);
-    allocatesOp = allocatesOp.add(genesisInfo.storageKeyAllocateUnits);
-    writesOp = writesOp.add(genesisInfo.storageKeyWriteUnits);
-    readsOp = readsOp.add(
-      (0, import_big_integer.default)(maxChunks).multiply((0, import_big_integer.default)(genesisInfo.storageValueReadUnits))
-    );
-    allocatesOp = allocatesOp.add(
-      (0, import_big_integer.default)(maxChunks).multiply((0, import_big_integer.default)(genesisInfo.storageValueAllocateUnits))
-    );
-    writesOp = writesOp.add(
-      (0, import_big_integer.default)(maxChunks).multiply((0, import_big_integer.default)(genesisInfo.storageValueWriteUnits))
-    );
-  }
-  const reads = readsOp.valueOf();
-  const allocates = allocatesOp.valueOf();
-  const writes = writesOp.valueOf();
-  return [bandwidth, compute, reads, allocates, writes];
-}
-
-// src/chain/transaction.ts
-var Transaction = class _Transaction {
-  base;
-  actions;
-  auth;
-  bytes = new Uint8Array();
-  constructor(base, actions) {
-    this.base = base;
-    this.actions = actions;
-  }
-  calculateDigest() {
-    const codec = Codec.newWriter(this.size(), NETWORK_SIZE_LIMIT);
-    codec.packFixedBytes(this.base.toBytes());
-    codec.packByte(this.actions.length);
-    this.actions.forEach((action) => {
-      const actionTypeId = action.getTypeId();
-      codec.packByte(actionTypeId);
-      codec.packFixedBytes(action.toBytes());
-    });
-    return [codec.toBytes(), codec.getError()];
-  }
-  sign(factory, actionRegistry, authRegistry) {
-    let [msg, err2] = this.calculateDigest();
-    if (err2) {
-      return [this, err2];
-    }
-    this.auth = factory.sign(msg);
-    [this.bytes, err2] = this.toBytes();
-    if (err2) {
-      return [this, err2];
-    }
-    return _Transaction.fromBytes(this.bytes, actionRegistry, authRegistry);
-  }
-  toBytes() {
-    if (this.bytes.length > 0) {
-      return [this.bytes, void 0];
-    }
-    const codec = Codec.newWriter(this.size(), NETWORK_SIZE_LIMIT);
-    const baseBytes = this.base.toBytes();
-    codec.packFixedBytes(baseBytes);
-    const numActions = this.actions.length;
-    codec.packByte(numActions);
-    this.actions.forEach((action) => {
-      const actionTypeId = action.getTypeId();
-      codec.packByte(actionTypeId);
-      const actionBytes = action.toBytes();
-      codec.packFixedBytes(actionBytes);
-    });
-    if (this.auth) {
-      const authTypeId = this.auth.getTypeId();
-      codec.packByte(authTypeId);
-      const authBytes = this.auth.toBytes();
-      codec.packFixedBytes(authBytes);
-    }
-    return [codec.toBytes(), codec.getError()];
-  }
-  static fromBytes(bytes3, actionRegistry, authRegistry) {
-    let codec = Codec.newReader(bytes3, bytes3.length);
-    const baseBytes = codec.unpackFixedBytes(BaseTxSize);
-    let [base, err2] = BaseTx.fromBytes(baseBytes);
-    if (err2) {
-      return [
-        new _Transaction(base, []),
-        new Error(`Failed to unpack base transaction: ${err2}`)
-      ];
-    }
-    const numActions = codec.unpackByte();
-    if (numActions === 0) {
-      return [
-        new _Transaction(base, []),
-        new Error("Transaction must have at least one action")
-      ];
-    }
-    const actions = [];
-    for (let i = 0; i < numActions; i++) {
-      const actionTypeId = codec.unpackByte();
-      const [fromBytesAction, ok] = actionRegistry.lookupIndex(actionTypeId);
-      if (!ok) {
-        return [
-          new _Transaction(base, []),
-          new Error(`Invalid action type: ${actionTypeId}`)
-        ];
-      }
-      const [action, codecAction] = fromBytesAction(codec);
-      if (codecAction.getError()) {
-        return [
-          new _Transaction(base, []),
-          new Error(`Failed to unpack action: ${err2}`)
-        ];
-      }
-      codec = codecAction;
-      actions.push(action);
-    }
-    const transaction = new _Transaction(base, actions);
-    if (codec.getOffset() < bytes3.length) {
-      const authTypeId = codec.unpackByte();
-      const [fromBytesAuth, ok] = authRegistry.lookupIndex(authTypeId);
-      if (!ok) {
-        return [
-          new _Transaction(base, []),
-          new Error(`Invalid auth type: ${authTypeId}`)
-        ];
-      }
-      const [auth, codecAuth] = fromBytesAuth(codec);
-      if (codecAuth.getError()) {
-        return [
-          new _Transaction(base, []),
-          new Error(`Failed to unpack auth: ${err2}`)
-        ];
-      }
-      codec = codecAuth;
-      transaction.auth = auth;
-    }
-    transaction.bytes = bytes3;
-    return [transaction, codec.getError()];
-  }
-  id() {
-    return Ve.fromBytes(ToID(this.bytes))[0];
-  }
-  size() {
-    let size = this.base.size() + BYTE_LEN;
-    this.actions.forEach((action) => {
-      const actionSize = BYTE_LEN + action.size();
-      size += actionSize;
-    });
-    if (this.auth) {
-      const authSize = BYTE_LEN + this.auth.size();
-      size += authSize;
-    }
-    return size;
-  }
-};
-
-// src/common/rpc.ts
-var JrpcProvider = class {
-  constructor(url) {
-    this.url = url;
-  }
-  reqId = 0;
-  async callMethod(method, parameters, fetchOptions) {
-    const body = {
-      jsonrpc: "2.0",
-      id: this.reqId++,
-      method,
-      params: parameters
-    };
-    const resp = await fetch(this.url, {
-      ...fetchOptions,
-      method: "POST",
-      body: JSON.stringify(body),
-      headers: {
-        "Content-Type": "application/json",
-        ...fetchOptions?.headers
-      }
-    }).then(async (r) => r.json()).then((data) => data);
-    if (resp.error) throw new Error(resp.error.message);
-    return resp.result;
-  }
-  // TODO: Batch RPC call
-};
-
-// src/common/baseApi.ts
-var Api = class {
-  constructor(baseURL = MAINNET_PUBLIC_API_BASE_URL, path = `${HYPERCHAIN_ENDPOINT}/${COREAPI_PATH}`, base, fetchOptions) {
-    this.path = path;
-    this.base = base;
-    this.fetchOptions = fetchOptions;
-    this.rpcProvider = new JrpcProvider(baseURL + path);
-  }
-  rpcProvider;
-  setFetchOptions(options) {
-    this.fetchOptions = options;
-  }
-  getMethodName = (methodName) => {
-    if (!this.base) {
-      return methodName;
-    }
-    return `${this.base}.${methodName}`;
-  };
-  callRpc = (methodName, params) => this.rpcProvider.callMethod(
-    this.getMethodName(methodName),
-    params,
-    this.fetchOptions
-  );
-};
-
-// src/services/rpc.ts
-var RpcService = class extends Api {
-  constructor(config) {
-    super(
-      config.baseApiUrl,
-      `/ext/bc/${config.blockchainId}/${COREAPI_PATH}`,
-      COREAPI_METHOD_PREFIX
-    );
-    this.config = config;
-  }
-  ping() {
-    return this.callRpc("ping");
-  }
-  // Retrieve network IDs
-  getNetworkInfo() {
-    return this.callRpc("network");
-  }
-  // Get information about the last accepted block
-  getLastAccepted() {
-    return this.callRpc("lastAccepted");
-  }
-  // Fetch current unit prices for transactions
-  getUnitPrices() {
-    return this.callRpc("unitPrices");
-  }
-  // Fetch warp signatures associated with a transaction
-  getWarpSignatures(txID) {
-    return this.callRpc("getWarpSignatures", {
-      txID
-    });
-  }
-  // Submit a transaction to the network
-  async submitTransaction(tx) {
-    const txBase64 = Array.from(tx);
-    return this.callRpc("submitTx", { tx: txBase64 });
-  }
-  async generateTransaction(genesisInfo, actionRegistry, authRegistry, actions, authFactory) {
-    try {
-      const timestamp = getUnixRMilli(
-        Date.now(),
-        genesisInfo.validityWindow
-      );
-      const chainId = Ve.fromString(this.config.blockchainId);
-      const unitPrices = await this.getUnitPrices();
-      const units = estimateUnits(genesisInfo, actions, authFactory);
-      const [maxFee, error] = mulSum(unitPrices.unitPrices, units);
-      if (error) {
-        return {
-          submit: async () => {
-            throw new Error("Transaction failed, cannot submit.");
-          },
-          txSigned: {},
-          err: error
-        };
-      }
-      const base = new BaseTx(timestamp, chainId, maxFee);
-      const tx = new Transaction(base, actions);
-      const [txSigned, err2] = tx.sign(authFactory, actionRegistry, authRegistry);
-      if (err2) {
-        return {
-          submit: async () => {
-            throw new Error("Transaction failed, cannot submit.");
-          },
-          txSigned: {},
-          err: err2
-        };
-      }
-      const submit = async () => {
-        const [txBytes, err3] = txSigned.toBytes();
-        if (err3) {
-          throw new Error(`Transaction failed, cannot submit. Err: ${err3}`);
-        }
-        return await this.submitTransaction(txBytes);
-      };
-      return { submit, txSigned, err: void 0 };
-    } catch (error) {
-      return {
-        submit: async () => {
-          throw new Error("Transaction failed, cannot submit.");
-        },
-        txSigned: {},
-        err: error
-      };
-    }
-  }
-};
-
-// src/actions/index.ts
-var actions_exports = {};
-__export(actions_exports, {
-  Transfer: () => Transfer,
-  TransferTxSize: () => TransferTxSize
-});
-
 // src/actions/transfer.ts
 var TransferTxSize = ADDRESS_LEN + ID_LEN + UINT64_LEN + INT_LEN + MAX_MEMO_SIZE;
 var Transfer = class _Transfer {
@@ -7467,19 +7074,6 @@ var Transfer = class _Transfer {
     return [action, codecResult];
   }
 };
-
-// src/auth/index.ts
-var auth_exports = {};
-__export(auth_exports, {
-  BLS: () => BLS,
-  BLSFactory: () => BLSFactory,
-  BlsAuthSize: () => BlsAuthSize,
-  ED25519: () => ED25519,
-  ED25519Factory: () => ED25519Factory,
-  Ed25519AuthSize: () => Ed25519AuthSize,
-  getAuth: () => getAuth,
-  getAuthFactory: () => getAuthFactory
-});
 
 // node_modules/@noble/curves/node_modules/@noble/hashes/esm/_assert.js
 function isBytes4(a) {
@@ -11076,6 +10670,437 @@ var ED25519Factory = class _ED25519Factory {
   }
 };
 
+// src/codec/typeParser.ts
+var errTooManyItems = new Error("Too many items");
+var errDuplicateItem = new Error("Duplicate item");
+var TypeParser = class {
+  typeToIndex;
+  indexToDecoder;
+  constructor() {
+    this.typeToIndex = /* @__PURE__ */ new Map();
+    this.indexToDecoder = /* @__PURE__ */ new Map();
+  }
+  // Register a new type into TypeParser
+  register(id, f3, y2) {
+    if (this.indexToDecoder.size === MaxUint8 + 1) {
+      throw errTooManyItems;
+    }
+    if (this.indexToDecoder.has(id)) {
+      throw errDuplicateItem;
+    }
+    this.indexToDecoder.set(id, { f: f3, y: y2 });
+  }
+  // LookupIndex returns the decoder function and success of lookup of [index]
+  lookupIndex(index) {
+    const decoder = this.indexToDecoder.get(index);
+    if (decoder) {
+      return [decoder.f, true];
+    }
+    const noop = (codec) => {
+      return [void 0, codec];
+    };
+    return [noop, false];
+  }
+};
+
+// src/constants/endpoints.ts
+var MAINNET_PUBLIC_API_BASE_URL = "http://api-mainnet.nuklaivm-dev.net:9650";
+var TESTNET_PUBLIC_API_BASE_URL = "http://api-devnet.nuklaivm-dev.net:9650";
+var HYPERCHAIN_ID = "zepWp9PbeU9HLHebQ8gXkvxBYH5Bz4v8SoWXE6kyjjwNaMJfC";
+var HYPERCHAIN_ENDPOINT = `/ext/bc/${HYPERCHAIN_ID}`;
+var COREAPI_PATH = "coreapi";
+var COREAPI_METHOD_PREFIX = "hypersdk";
+
+// src/chain/baseTx.ts
+var BaseTxSize = 2 * UINT64_LEN + ID_LEN;
+var BaseTx = class _BaseTx {
+  timestamp;
+  chainId;
+  maxFee;
+  constructor(timestamp, chainId, maxFee) {
+    this.timestamp = timestamp;
+    this.chainId = chainId;
+    this.maxFee = maxFee;
+  }
+  size() {
+    return BaseTxSize;
+  }
+  toBytes() {
+    const codec = Codec.newWriter(this.size(), this.size());
+    codec.packInt64(this.timestamp);
+    codec.packID(this.chainId);
+    codec.packUint64(this.maxFee);
+    return codec.toBytes();
+  }
+  static fromBytes(bytes3) {
+    const codec = Codec.newReader(bytes3, bytes3.length);
+    const timestamp = codec.unpackInt64(true);
+    if (timestamp % MillisecondsPerSecond !== 0n) {
+      return [
+        new _BaseTx(0n, EMPTY_ID, 0n),
+        new Error("Timestamp is misaligned")
+      ];
+    }
+    const chainId = codec.unpackID(true);
+    const maxFee = codec.unpackUint64(true);
+    const baseTx = new _BaseTx(timestamp, chainId, maxFee);
+    return [baseTx, codec.getError()];
+  }
+};
+
+// src/chain/fees.ts
+var import_big_integer = __toESM(require_BigInteger(), 1);
+var FeeDimensions = 5;
+function mul64(a, b2) {
+  return BigInt(a) * BigInt(b2);
+}
+function add64(a, b2) {
+  return a + b2;
+}
+function mulSum(a, b2) {
+  let val = 0n;
+  for (let i = 0; i < FeeDimensions; i++) {
+    try {
+      const v2 = mul64(a[i], b2[i]);
+      val = add64(val, v2);
+    } catch (err2) {
+      return [0n, err2];
+    }
+  }
+  return [val];
+}
+function estimateUnits(genesisInfo, actions, authFactory) {
+  let bandwidth = BaseTxSize;
+  let stateKeysMaxChunks = [];
+  let computeOp = (0, import_big_integer.default)(genesisInfo.baseUnits);
+  let readsOp = (0, import_big_integer.default)(0);
+  let allocatesOp = (0, import_big_integer.default)(0);
+  let writesOp = (0, import_big_integer.default)(0);
+  bandwidth += UINT8_LEN;
+  actions.forEach((action) => {
+    bandwidth += BYTE_LEN + action.size();
+    const actionStateKeysMaxChunks = action.stateKeysMaxChunks();
+    stateKeysMaxChunks = [...stateKeysMaxChunks, ...actionStateKeysMaxChunks];
+    computeOp = computeOp.add(action.computeUnits());
+  });
+  bandwidth += BYTE_LEN + authFactory.bandwidth();
+  const sponsorStateKeyMaxChunks = [STORAGE_BALANCE_CHUNKS];
+  stateKeysMaxChunks = [...stateKeysMaxChunks, ...sponsorStateKeyMaxChunks];
+  computeOp = computeOp.add(authFactory.computeUnits());
+  const compute = computeOp.valueOf();
+  for (const maxChunks of stateKeysMaxChunks) {
+    readsOp = readsOp.add(genesisInfo.storageKeyReadUnits);
+    allocatesOp = allocatesOp.add(genesisInfo.storageKeyAllocateUnits);
+    writesOp = writesOp.add(genesisInfo.storageKeyWriteUnits);
+    readsOp = readsOp.add(
+      (0, import_big_integer.default)(maxChunks).multiply((0, import_big_integer.default)(genesisInfo.storageValueReadUnits))
+    );
+    allocatesOp = allocatesOp.add(
+      (0, import_big_integer.default)(maxChunks).multiply((0, import_big_integer.default)(genesisInfo.storageValueAllocateUnits))
+    );
+    writesOp = writesOp.add(
+      (0, import_big_integer.default)(maxChunks).multiply((0, import_big_integer.default)(genesisInfo.storageValueWriteUnits))
+    );
+  }
+  const reads = readsOp.valueOf();
+  const allocates = allocatesOp.valueOf();
+  const writes = writesOp.valueOf();
+  return [bandwidth, compute, reads, allocates, writes];
+}
+
+// src/chain/transaction.ts
+var Transaction = class _Transaction {
+  base;
+  actions;
+  auth;
+  bytes = new Uint8Array();
+  constructor(base, actions) {
+    this.base = base;
+    this.actions = actions;
+  }
+  calculateDigest() {
+    const codec = Codec.newWriter(this.size(), NETWORK_SIZE_LIMIT);
+    codec.packFixedBytes(this.base.toBytes());
+    codec.packByte(this.actions.length);
+    this.actions.forEach((action) => {
+      const actionTypeId = action.getTypeId();
+      codec.packByte(actionTypeId);
+      codec.packFixedBytes(action.toBytes());
+    });
+    return [codec.toBytes(), codec.getError()];
+  }
+  sign(factory, actionRegistry, authRegistry) {
+    let [msg, err2] = this.calculateDigest();
+    if (err2) {
+      return [this, err2];
+    }
+    this.auth = factory.sign(msg);
+    [this.bytes, err2] = this.toBytes();
+    if (err2) {
+      return [this, err2];
+    }
+    return _Transaction.fromBytes(this.bytes, actionRegistry, authRegistry);
+  }
+  toBytes() {
+    if (this.bytes.length > 0) {
+      return [this.bytes, void 0];
+    }
+    const codec = Codec.newWriter(this.size(), NETWORK_SIZE_LIMIT);
+    const baseBytes = this.base.toBytes();
+    codec.packFixedBytes(baseBytes);
+    const numActions = this.actions.length;
+    codec.packByte(numActions);
+    this.actions.forEach((action) => {
+      const actionTypeId = action.getTypeId();
+      codec.packByte(actionTypeId);
+      const actionBytes = action.toBytes();
+      codec.packFixedBytes(actionBytes);
+    });
+    if (this.auth) {
+      const authTypeId = this.auth.getTypeId();
+      codec.packByte(authTypeId);
+      const authBytes = this.auth.toBytes();
+      codec.packFixedBytes(authBytes);
+    }
+    return [codec.toBytes(), codec.getError()];
+  }
+  static fromBytes(bytes3, actionRegistry, authRegistry) {
+    let codec = Codec.newReader(bytes3, bytes3.length);
+    const baseBytes = codec.unpackFixedBytes(BaseTxSize);
+    let [base, err2] = BaseTx.fromBytes(baseBytes);
+    if (err2) {
+      return [
+        new _Transaction(base, []),
+        new Error(`Failed to unpack base transaction: ${err2}`)
+      ];
+    }
+    const numActions = codec.unpackByte();
+    if (numActions === 0) {
+      return [
+        new _Transaction(base, []),
+        new Error("Transaction must have at least one action")
+      ];
+    }
+    const actions = [];
+    for (let i = 0; i < numActions; i++) {
+      const actionTypeId = codec.unpackByte();
+      const [fromBytesAction, ok] = actionRegistry.lookupIndex(actionTypeId);
+      if (!ok) {
+        return [
+          new _Transaction(base, []),
+          new Error(`Invalid action type: ${actionTypeId}`)
+        ];
+      }
+      const [action, codecAction] = fromBytesAction(codec);
+      if (codecAction.getError()) {
+        return [
+          new _Transaction(base, []),
+          new Error(`Failed to unpack action: ${err2}`)
+        ];
+      }
+      codec = codecAction;
+      actions.push(action);
+    }
+    const transaction = new _Transaction(base, actions);
+    if (codec.getOffset() < bytes3.length) {
+      const authTypeId = codec.unpackByte();
+      const [fromBytesAuth, ok] = authRegistry.lookupIndex(authTypeId);
+      if (!ok) {
+        return [
+          new _Transaction(base, []),
+          new Error(`Invalid auth type: ${authTypeId}`)
+        ];
+      }
+      const [auth, codecAuth] = fromBytesAuth(codec);
+      if (codecAuth.getError()) {
+        return [
+          new _Transaction(base, []),
+          new Error(`Failed to unpack auth: ${err2}`)
+        ];
+      }
+      codec = codecAuth;
+      transaction.auth = auth;
+    }
+    transaction.bytes = bytes3;
+    return [transaction, codec.getError()];
+  }
+  id() {
+    return Ve.fromBytes(ToID(this.bytes))[0];
+  }
+  size() {
+    let size = this.base.size() + BYTE_LEN;
+    this.actions.forEach((action) => {
+      const actionSize = BYTE_LEN + action.size();
+      size += actionSize;
+    });
+    if (this.auth) {
+      const authSize = BYTE_LEN + this.auth.size();
+      size += authSize;
+    }
+    return size;
+  }
+};
+
+// src/common/rpc.ts
+var JrpcProvider = class {
+  constructor(url) {
+    this.url = url;
+  }
+  reqId = 0;
+  async callMethod(method, parameters, fetchOptions) {
+    const body = {
+      jsonrpc: "2.0",
+      id: this.reqId++,
+      method,
+      params: parameters
+    };
+    const resp = await fetch(this.url, {
+      ...fetchOptions,
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: {
+        "Content-Type": "application/json",
+        ...fetchOptions?.headers
+      }
+    }).then(async (r) => r.json()).then((data) => data);
+    if (resp.error) throw new Error(resp.error.message);
+    return resp.result;
+  }
+  // TODO: Batch RPC call
+};
+
+// src/common/baseApi.ts
+var Api = class {
+  constructor(baseURL = MAINNET_PUBLIC_API_BASE_URL, path = `${HYPERCHAIN_ENDPOINT}/${COREAPI_PATH}`, base, fetchOptions) {
+    this.path = path;
+    this.base = base;
+    this.fetchOptions = fetchOptions;
+    this.rpcProvider = new JrpcProvider(baseURL + path);
+  }
+  rpcProvider;
+  setFetchOptions(options) {
+    this.fetchOptions = options;
+  }
+  getMethodName = (methodName) => {
+    if (!this.base) {
+      return methodName;
+    }
+    return `${this.base}.${methodName}`;
+  };
+  callRpc = (methodName, params) => this.rpcProvider.callMethod(
+    this.getMethodName(methodName),
+    params,
+    this.fetchOptions
+  );
+};
+
+// src/services/rpc.ts
+var RpcService = class extends Api {
+  constructor(config) {
+    super(
+      config.baseApiUrl,
+      `/ext/bc/${config.blockchainId}/${COREAPI_PATH}`,
+      COREAPI_METHOD_PREFIX
+    );
+    this.config = config;
+  }
+  ping() {
+    return this.callRpc("ping");
+  }
+  // Retrieve network IDs
+  getNetworkInfo() {
+    return this.callRpc("network");
+  }
+  // Get information about the last accepted block
+  getLastAccepted() {
+    return this.callRpc("lastAccepted");
+  }
+  // Fetch current unit prices for transactions
+  getUnitPrices() {
+    return this.callRpc("unitPrices");
+  }
+  // Fetch warp signatures associated with a transaction
+  getWarpSignatures(txID) {
+    return this.callRpc("getWarpSignatures", {
+      txID
+    });
+  }
+  // Submit a transaction to the network
+  async submitTransaction(tx) {
+    const txBase64 = Array.from(tx);
+    return this.callRpc("submitTx", { tx: txBase64 });
+  }
+  async generateTransaction(genesisInfo, actionRegistry, authRegistry, actions, authFactory) {
+    try {
+      const timestamp = getUnixRMilli(
+        Date.now(),
+        genesisInfo.validityWindow
+      );
+      const chainId = Ve.fromString(this.config.blockchainId);
+      const unitPrices = await this.getUnitPrices();
+      const units = estimateUnits(genesisInfo, actions, authFactory);
+      const [maxFee, error] = mulSum(unitPrices.unitPrices, units);
+      if (error) {
+        return {
+          submit: async () => {
+            throw new Error("Transaction failed, cannot submit.");
+          },
+          txSigned: {},
+          err: error
+        };
+      }
+      const base = new BaseTx(timestamp, chainId, maxFee);
+      const tx = new Transaction(base, actions);
+      const [txSigned, err2] = tx.sign(authFactory, actionRegistry, authRegistry);
+      if (err2) {
+        return {
+          submit: async () => {
+            throw new Error("Transaction failed, cannot submit.");
+          },
+          txSigned: {},
+          err: err2
+        };
+      }
+      const submit = async () => {
+        const [txBytes, err3] = txSigned.toBytes();
+        if (err3) {
+          throw new Error(`Transaction failed, cannot submit. Err: ${err3}`);
+        }
+        return await this.submitTransaction(txBytes);
+      };
+      return { submit, txSigned, err: void 0 };
+    } catch (error) {
+      return {
+        submit: async () => {
+          throw new Error("Transaction failed, cannot submit.");
+        },
+        txSigned: {},
+        err: error
+      };
+    }
+  }
+};
+
+// src/actions/index.ts
+var actions_exports = {};
+__export(actions_exports, {
+  Transfer: () => Transfer,
+  TransferTxSize: () => TransferTxSize
+});
+
+// src/auth/index.ts
+var auth_exports = {};
+__export(auth_exports, {
+  BLS: () => BLS,
+  BLSFactory: () => BLSFactory,
+  BlsAuthSize: () => BlsAuthSize,
+  ED25519: () => ED25519,
+  ED25519Factory: () => ED25519Factory,
+  Ed25519AuthSize: () => Ed25519AuthSize,
+  getAuth: () => getAuth,
+  getAuthFactory: () => getAuthFactory
+});
+
 // src/utils/base64.ts
 function isBase64(str2) {
   const base64Regex = /^(?:[A-Za-z0-9+\/]{4})*?(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)?$/;
@@ -11127,45 +11152,22 @@ function getAuth(authType, signer, signature) {
   }
 }
 
+// src/chain/index.ts
+var chain_exports = {};
+__export(chain_exports, {
+  BaseTx: () => BaseTx,
+  BaseTxSize: () => BaseTxSize,
+  Transaction: () => Transaction,
+  estimateUnits: () => estimateUnits,
+  mulSum: () => mulSum
+});
+
 // src/codec/index.ts
 var codec_exports = {};
 __export(codec_exports, {
   Codec: () => Codec,
   TypeParser: () => TypeParser
 });
-
-// src/codec/typeParser.ts
-var errTooManyItems = new Error("Too many items");
-var errDuplicateItem = new Error("Duplicate item");
-var TypeParser = class {
-  typeToIndex;
-  indexToDecoder;
-  constructor() {
-    this.typeToIndex = /* @__PURE__ */ new Map();
-    this.indexToDecoder = /* @__PURE__ */ new Map();
-  }
-  // Register a new type into TypeParser
-  register(id, f3, y2) {
-    if (this.indexToDecoder.size === MaxUint8 + 1) {
-      throw errTooManyItems;
-    }
-    if (this.indexToDecoder.has(id)) {
-      throw errDuplicateItem;
-    }
-    this.indexToDecoder.set(id, { f: f3, y: y2 });
-  }
-  // LookupIndex returns the decoder function and success of lookup of [index]
-  lookupIndex(index) {
-    const decoder = this.indexToDecoder.get(index);
-    if (decoder) {
-      return [decoder.f, true];
-    }
-    const noop = (codec) => {
-      return [void 0, codec];
-    };
-    return [noop, false];
-  }
-};
 
 // src/common/index.ts
 var common_exports = {};
@@ -11257,15 +11259,6 @@ __export(services_exports, {
   RpcService: () => RpcService
 });
 
-// src/transactions/index.ts
-var transactions_exports = {};
-__export(transactions_exports, {
-  BaseTx: () => BaseTx,
-  BaseTxSize: () => BaseTxSize,
-  Transaction: () => Transaction,
-  fees: () => fees_exports
-});
-
 // src/utils/index.ts
 var utils_exports2 = {};
 __export(utils_exports2, {
@@ -11290,6 +11283,9 @@ var HyperchainSDK = class {
   nodeConfig;
   // Hypervm services
   rpcService;
+  // Registry
+  actionRegistry = new TypeParser();
+  authRegistry = new TypeParser();
   constructor(nodeConfig) {
     const defaultSDKConfig = {
       baseApiUrl: MAINNET_PUBLIC_API_BASE_URL,
@@ -11297,19 +11293,22 @@ var HyperchainSDK = class {
     };
     this.nodeConfig = { ...defaultSDKConfig, ...nodeConfig };
     this.rpcService = new RpcService(this.nodeConfig);
+    this.actionRegistry.register(TRANSFER_ID, Transfer.fromBytesCodec, false);
+    this.authRegistry.register(BLS_ID, BLS.fromBytesCodec, false);
+    this.authRegistry.register(ED25519_ID, ED25519.fromBytesCodec, false);
   }
 };
 export {
   HyperchainSDK,
   actions_exports as actions,
   auth_exports as auth,
+  chain_exports as chain,
   codec_exports as codec,
   common_exports as common,
   config_exports as config,
   constants_exports as consts,
   crypto_exports as crypto,
   services_exports as services,
-  transactions_exports as transactions,
   utils_exports2 as utils
 };
 /*! Bundled license information:

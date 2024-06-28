@@ -21,7 +21,6 @@ class BaseTx {
     toBytes() {
         const codec = codec_1.Codec.newWriter(this.size(), this.size());
         codec.packInt64(this.timestamp);
-        const packedTimestampBytes = codec.toBytes();
         codec.packID(this.chainId);
         codec.packUint64(this.maxFee);
         return codec.toBytes();

@@ -10,7 +10,7 @@ exports.estimateUnits = estimateUnits;
 const big_integer_1 = __importDefault(require("big-integer"));
 const consts_1 = require("../constants/consts");
 const hypervm_1 = require("../constants/hypervm");
-const baseTx_1 = require("../transactions/baseTx");
+const baseTx_1 = require("./baseTx");
 const FeeDimensions = 5;
 function mul64(a, b) {
     return BigInt(a) * BigInt(b);

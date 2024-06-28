@@ -6,8 +6,8 @@ exports.Transaction = void 0;
 const avalanchejs_1 = require("@avalabs/avalanchejs");
 const codec_1 = require("../codec/codec");
 const consts_1 = require("../constants/consts");
-const baseTx_1 = require("../transactions/baseTx");
 const hashing_1 = require("../utils/hashing");
+const baseTx_1 = require("./baseTx");
 class Transaction {
     base;
     actions;

@@ -4,11 +4,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RpcService = void 0;
 const avalanchejs_1 = require("@avalabs/avalanchejs");
+const baseTx_1 = require("../chain/baseTx");
 const fees_1 = require("../chain/fees");
 const transaction_1 = require("../chain/transaction");
 const baseApi_1 = require("../common/baseApi");
 const endpoints_1 = require("../constants/endpoints");
-const baseTx_1 = require("../transactions/baseTx");
 const utils_1 = require("../utils/utils");
 class RpcService extends baseApi_1.Api {
     config;

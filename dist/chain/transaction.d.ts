@@ -1,7 +1,7 @@
 import { Id } from '@avalabs/avalanchejs';
 import { Action } from '../actions/action';
 import { Auth, AuthFactory } from '../auth/auth';
-import { BaseTx } from '../transactions/baseTx';
+import { BaseTx } from './baseTx';
 import { ActionRegistry, AuthRegistry } from './dependencies';
 export declare class Transaction {
     base: BaseTx;
