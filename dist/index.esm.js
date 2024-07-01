@@ -32269,6 +32269,17 @@ var require_BigInteger = __commonJS({
 // src/index.ts
 init_polyfills();
 
+// src/actions/index.ts
+var actions_exports = {};
+__export(actions_exports, {
+  Transfer: () => Transfer,
+  TransferTxSize: () => TransferTxSize
+});
+init_polyfills();
+
+// src/actions/action.ts
+init_polyfills();
+
 // src/actions/transfer.ts
 init_polyfills();
 
@@ -38093,6 +38104,23 @@ var Transfer = class _Transfer {
   }
 };
 
+// src/auth/index.ts
+var auth_exports = {};
+__export(auth_exports, {
+  BLS: () => BLS,
+  BLSFactory: () => BLSFactory,
+  BlsAuthSize: () => BlsAuthSize,
+  ED25519: () => ED25519,
+  ED25519Factory: () => ED25519Factory,
+  Ed25519AuthSize: () => Ed25519AuthSize,
+  getAuth: () => getAuth,
+  getAuthFactory: () => getAuthFactory
+});
+init_polyfills();
+
+// src/auth/auth.ts
+init_polyfills();
+
 // src/auth/bls.ts
 init_polyfills();
 
@@ -41728,50 +41756,71 @@ var ED25519Factory = class _ED25519Factory {
   }
 };
 
-// src/codec/typeParser.ts
+// src/auth/provider.ts
 init_polyfills();
-var errTooManyItems = new Error("Too many items");
-var errDuplicateItem = new Error("Duplicate item");
-var TypeParser = class {
-  typeToIndex;
-  indexToDecoder;
-  constructor() {
-    this.typeToIndex = /* @__PURE__ */ new Map();
-    this.indexToDecoder = /* @__PURE__ */ new Map();
-  }
-  // Register a new type into TypeParser
-  register(id, f3, y2) {
-    if (this.indexToDecoder.size === MaxUint8 + 1) {
-      throw errTooManyItems;
-    }
-    if (this.indexToDecoder.has(id)) {
-      throw errDuplicateItem;
-    }
-    this.indexToDecoder.set(id, { f: f3, y: y2 });
-  }
-  // LookupIndex returns the decoder function and success of lookup of [index]
-  lookupIndex(index) {
-    const decoder = this.indexToDecoder.get(index);
-    if (decoder) {
-      return [decoder.f, true];
-    }
-    const noop = (codec) => {
-      return [void 0, codec];
-    };
-    return [noop, false];
-  }
-};
 
-// src/constants/endpoints.ts
+// src/utils/base64.ts
 init_polyfills();
-var MAINNET_PUBLIC_API_BASE_URL = "http://api-mainnet.nuklaivm-dev.net:9650";
-var TESTNET_PUBLIC_API_BASE_URL = "http://api-devnet.nuklaivm-dev.net:9650";
-var HYPERCHAIN_ID = "zepWp9PbeU9HLHebQ8gXkvxBYH5Bz4v8SoWXE6kyjjwNaMJfC";
-var HYPERCHAIN_ENDPOINT = `/ext/bc/${HYPERCHAIN_ID}`;
-var COREAPI_PATH = "coreapi";
-var COREAPI_METHOD_PREFIX = "hypersdk";
+function isBase64(str2) {
+  const base64Regex = /^(?:[A-Za-z0-9+\/]{4})*?(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)?$/;
+  return base64Regex.test(str2);
+}
+function base64ToUint8Array(base642) {
+  const binaryString = atob(base642);
+  const len = binaryString.length;
+  const bytes3 = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes3[i] = binaryString.charCodeAt(i);
+  }
+  return bytes3;
+}
 
-// src/services/rpc.ts
+// src/auth/provider.ts
+var import_buffer6 = __toESM(require_buffer(), 1);
+function decodePrivateKey(privateKey) {
+  if (isHex(privateKey)) {
+    return import_buffer6.Buffer.from(privateKey, "hex");
+  } else if (isBase64(privateKey)) {
+    return base64ToUint8Array(privateKey);
+  } else {
+    throw new Error("Unsupported private key format");
+  }
+}
+function getAuthFactory(authType, privateKeyString) {
+  const privateKeyBytes = decodePrivateKey(privateKeyString);
+  const privateKeyHex = import_buffer6.Buffer.from(privateKeyBytes).toString("hex");
+  if (authType === "bls") {
+    const privateKey = BLSFactory.hexToPrivateKey(privateKeyHex);
+    return new BLSFactory(privateKey);
+  } else if (authType === "ed25519") {
+    const privateKey = ED25519Factory.hexToPrivateKey(privateKeyHex);
+    return new ED25519Factory(privateKey);
+  } else {
+    throw new Error("Unsupported key type");
+  }
+}
+function getAuth(authType, signer, signature) {
+  if (authType === "bls") {
+    return new BLS(
+      ki.publicKeyFromBytes(signer),
+      ki.signatureFromBytes(signature)
+    );
+  } else if (authType === "ed25519") {
+    return new ED25519(signer, signature);
+  } else {
+    throw new Error("Unsupported key type");
+  }
+}
+
+// src/chain/index.ts
+var chain_exports = {};
+__export(chain_exports, {
+  BaseTx: () => BaseTx,
+  BaseTxSize: () => BaseTxSize,
+  Transaction: () => Transaction,
+  estimateUnits: () => estimateUnits,
+  mulSum: () => mulSum
+});
 init_polyfills();
 
 // src/chain/baseTx.ts
@@ -41811,6 +41860,9 @@ var BaseTx = class _BaseTx {
     return [baseTx, codec.getError()];
   }
 };
+
+// src/chain/dependencies.ts
+init_polyfills();
 
 // src/chain/fees.ts
 init_polyfills();
@@ -42007,8 +42059,67 @@ var Transaction = class _Transaction {
   }
 };
 
+// src/codec/index.ts
+var codec_exports = {};
+__export(codec_exports, {
+  Codec: () => Codec,
+  TypeParser: () => TypeParser
+});
+init_polyfills();
+
+// src/codec/typeParser.ts
+init_polyfills();
+var errTooManyItems = new Error("Too many items");
+var errDuplicateItem = new Error("Duplicate item");
+var TypeParser = class {
+  typeToIndex;
+  indexToDecoder;
+  constructor() {
+    this.typeToIndex = /* @__PURE__ */ new Map();
+    this.indexToDecoder = /* @__PURE__ */ new Map();
+  }
+  // Register a new type into TypeParser
+  register(id, f3, y2) {
+    if (this.indexToDecoder.size === MaxUint8 + 1) {
+      throw errTooManyItems;
+    }
+    if (this.indexToDecoder.has(id)) {
+      throw errDuplicateItem;
+    }
+    this.indexToDecoder.set(id, { f: f3, y: y2 });
+  }
+  // LookupIndex returns the decoder function and success of lookup of [index]
+  lookupIndex(index) {
+    const decoder = this.indexToDecoder.get(index);
+    if (decoder) {
+      return [decoder.f, true];
+    }
+    const noop = (codec) => {
+      return [void 0, codec];
+    };
+    return [noop, false];
+  }
+};
+
+// src/common/index.ts
+var common_exports = {};
+__export(common_exports, {
+  Api: () => Api,
+  JrpcProvider: () => JrpcProvider
+});
+init_polyfills();
+
 // src/common/baseApi.ts
 init_polyfills();
+
+// src/constants/endpoints.ts
+init_polyfills();
+var MAINNET_PUBLIC_API_BASE_URL = "http://api-mainnet.nuklaivm-dev.net:9650";
+var TESTNET_PUBLIC_API_BASE_URL = "http://api-devnet.nuklaivm-dev.net:9650";
+var HYPERCHAIN_ID = "zepWp9PbeU9HLHebQ8gXkvxBYH5Bz4v8SoWXE6kyjjwNaMJfC";
+var HYPERCHAIN_ENDPOINT = `/ext/bc/${HYPERCHAIN_ID}`;
+var COREAPI_PATH = "coreapi";
+var COREAPI_METHOD_PREFIX = "hypersdk";
 
 // src/common/rpc.ts
 init_polyfills();
@@ -42063,207 +42174,6 @@ var Api = class {
     this.fetchOptions
   );
 };
-
-// src/services/rpc.ts
-var RpcService = class extends Api {
-  constructor(config) {
-    super(
-      config.baseApiUrl,
-      `/ext/bc/${config.blockchainId}/${COREAPI_PATH}`,
-      COREAPI_METHOD_PREFIX
-    );
-    this.config = config;
-  }
-  ping() {
-    return this.callRpc("ping");
-  }
-  // Retrieve network IDs
-  getNetworkInfo() {
-    return this.callRpc("network");
-  }
-  // Get information about the last accepted block
-  getLastAccepted() {
-    return this.callRpc("lastAccepted");
-  }
-  // Fetch current unit prices for transactions
-  getUnitPrices() {
-    return this.callRpc("unitPrices");
-  }
-  // Fetch warp signatures associated with a transaction
-  getWarpSignatures(txID) {
-    return this.callRpc("getWarpSignatures", {
-      txID
-    });
-  }
-  // Submit a transaction to the network
-  async submitTransaction(tx) {
-    const txBase64 = Array.from(tx);
-    return this.callRpc("submitTx", { tx: txBase64 });
-  }
-  async generateTransaction(genesisInfo, actionRegistry, authRegistry, actions, authFactory) {
-    try {
-      const timestamp = getUnixRMilli(
-        Date.now(),
-        genesisInfo.validityWindow
-      );
-      const chainId = Ve.fromString(this.config.blockchainId);
-      const unitPrices = await this.getUnitPrices();
-      const units = estimateUnits(genesisInfo, actions, authFactory);
-      const [maxFee, error] = mulSum(unitPrices.unitPrices, units);
-      if (error) {
-        return {
-          submit: async () => {
-            throw new Error("Transaction failed, cannot submit.");
-          },
-          txSigned: {},
-          err: error
-        };
-      }
-      const base = new BaseTx(timestamp, chainId, maxFee);
-      const tx = new Transaction(base, actions);
-      const [txSigned, err2] = tx.sign(authFactory, actionRegistry, authRegistry);
-      if (err2) {
-        return {
-          submit: async () => {
-            throw new Error("Transaction failed, cannot submit.");
-          },
-          txSigned: {},
-          err: err2
-        };
-      }
-      const submit = async () => {
-        const [txBytes, err3] = txSigned.toBytes();
-        if (err3) {
-          throw new Error(`Transaction failed, cannot submit. Err: ${err3}`);
-        }
-        return await this.submitTransaction(txBytes);
-      };
-      return { submit, txSigned, err: void 0 };
-    } catch (error) {
-      return {
-        submit: async () => {
-          throw new Error("Transaction failed, cannot submit.");
-        },
-        txSigned: {},
-        err: error
-      };
-    }
-  }
-};
-
-// src/actions/index.ts
-var actions_exports = {};
-__export(actions_exports, {
-  Transfer: () => Transfer,
-  TransferTxSize: () => TransferTxSize
-});
-init_polyfills();
-
-// src/actions/action.ts
-init_polyfills();
-
-// src/auth/index.ts
-var auth_exports = {};
-__export(auth_exports, {
-  BLS: () => BLS,
-  BLSFactory: () => BLSFactory,
-  BlsAuthSize: () => BlsAuthSize,
-  ED25519: () => ED25519,
-  ED25519Factory: () => ED25519Factory,
-  Ed25519AuthSize: () => Ed25519AuthSize,
-  getAuth: () => getAuth,
-  getAuthFactory: () => getAuthFactory
-});
-init_polyfills();
-
-// src/auth/auth.ts
-init_polyfills();
-
-// src/auth/provider.ts
-init_polyfills();
-
-// src/utils/base64.ts
-init_polyfills();
-function isBase64(str2) {
-  const base64Regex = /^(?:[A-Za-z0-9+\/]{4})*?(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)?$/;
-  return base64Regex.test(str2);
-}
-function base64ToUint8Array(base642) {
-  const binaryString = atob(base642);
-  const len = binaryString.length;
-  const bytes3 = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes3[i] = binaryString.charCodeAt(i);
-  }
-  return bytes3;
-}
-
-// src/auth/provider.ts
-var import_buffer6 = __toESM(require_buffer(), 1);
-function decodePrivateKey(privateKey) {
-  if (isHex(privateKey)) {
-    return import_buffer6.Buffer.from(privateKey, "hex");
-  } else if (isBase64(privateKey)) {
-    return base64ToUint8Array(privateKey);
-  } else {
-    throw new Error("Unsupported private key format");
-  }
-}
-function getAuthFactory(authType, privateKeyString) {
-  const privateKeyBytes = decodePrivateKey(privateKeyString);
-  const privateKeyHex = import_buffer6.Buffer.from(privateKeyBytes).toString("hex");
-  if (authType === "bls") {
-    const privateKey = BLSFactory.hexToPrivateKey(privateKeyHex);
-    return new BLSFactory(privateKey);
-  } else if (authType === "ed25519") {
-    const privateKey = ED25519Factory.hexToPrivateKey(privateKeyHex);
-    return new ED25519Factory(privateKey);
-  } else {
-    throw new Error("Unsupported key type");
-  }
-}
-function getAuth(authType, signer, signature) {
-  if (authType === "bls") {
-    return new BLS(
-      ki.publicKeyFromBytes(signer),
-      ki.signatureFromBytes(signature)
-    );
-  } else if (authType === "ed25519") {
-    return new ED25519(signer, signature);
-  } else {
-    throw new Error("Unsupported key type");
-  }
-}
-
-// src/chain/index.ts
-var chain_exports = {};
-__export(chain_exports, {
-  BaseTx: () => BaseTx,
-  BaseTxSize: () => BaseTxSize,
-  Transaction: () => Transaction,
-  estimateUnits: () => estimateUnits,
-  mulSum: () => mulSum
-});
-init_polyfills();
-
-// src/chain/dependencies.ts
-init_polyfills();
-
-// src/codec/index.ts
-var codec_exports = {};
-__export(codec_exports, {
-  Codec: () => Codec,
-  TypeParser: () => TypeParser
-});
-init_polyfills();
-
-// src/common/index.ts
-var common_exports = {};
-__export(common_exports, {
-  Api: () => Api,
-  JrpcProvider: () => JrpcProvider
-});
-init_polyfills();
 
 // src/common/models.ts
 init_polyfills();
@@ -42355,6 +42265,94 @@ __export(services_exports, {
 });
 init_polyfills();
 
+// src/services/rpc.ts
+init_polyfills();
+var RpcService = class extends Api {
+  constructor(config) {
+    super(
+      config.baseApiUrl,
+      `/ext/bc/${config.blockchainId}/${COREAPI_PATH}`,
+      COREAPI_METHOD_PREFIX
+    );
+    this.config = config;
+  }
+  ping() {
+    return this.callRpc("ping");
+  }
+  // Retrieve network IDs
+  getNetworkInfo() {
+    return this.callRpc("network");
+  }
+  // Get information about the last accepted block
+  getLastAccepted() {
+    return this.callRpc("lastAccepted");
+  }
+  // Fetch current unit prices for transactions
+  getUnitPrices() {
+    return this.callRpc("unitPrices");
+  }
+  // Fetch warp signatures associated with a transaction
+  getWarpSignatures(txID) {
+    return this.callRpc("getWarpSignatures", {
+      txID
+    });
+  }
+  // Submit a transaction to the network
+  async submitTransaction(tx) {
+    const txBase64 = Array.from(tx);
+    return this.callRpc("submitTx", { tx: txBase64 });
+  }
+  async generateTransaction(genesisInfo, actionRegistry, authRegistry, actions, authFactory) {
+    try {
+      const timestamp = getUnixRMilli(
+        Date.now(),
+        genesisInfo.validityWindow
+      );
+      const chainId = Ve.fromString(this.config.blockchainId);
+      const unitPrices = await this.getUnitPrices();
+      const units = estimateUnits(genesisInfo, actions, authFactory);
+      const [maxFee, error] = mulSum(unitPrices.unitPrices, units);
+      if (error) {
+        return {
+          submit: async () => {
+            throw new Error("Transaction failed, cannot submit.");
+          },
+          txSigned: {},
+          err: error
+        };
+      }
+      const base = new BaseTx(timestamp, chainId, maxFee);
+      const tx = new Transaction(base, actions);
+      const [txSigned, err2] = tx.sign(authFactory, actionRegistry, authRegistry);
+      if (err2) {
+        return {
+          submit: async () => {
+            throw new Error("Transaction failed, cannot submit.");
+          },
+          txSigned: {},
+          err: err2
+        };
+      }
+      const submit = async () => {
+        const [txBytes, err3] = txSigned.toBytes();
+        if (err3) {
+          throw new Error(`Transaction failed, cannot submit. Err: ${err3}`);
+        }
+        return await this.submitTransaction(txBytes);
+      };
+      return { submit, txSigned, err: void 0 };
+    } catch (error) {
+      return {
+        submit: async () => {
+          throw new Error("Transaction failed, cannot submit.");
+        },
+        txSigned: {},
+        err: error
+      };
+    }
+  }
+};
+
 // src/utils/index.ts
 var utils_exports2 = {};
 __export(utils_exports2, {
@@ -42375,7 +42373,8 @@ __export(utils_exports2, {
 });
 init_polyfills();
 
-// src/index.ts
+// src/sdk.ts
+init_polyfills();
 var HyperchainSDK = class {
   nodeConfig;
   // Hypervm services

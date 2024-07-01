@@ -26,13 +26,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HyperchainSDK = exports.utils = exports.services = exports.crypto = exports.consts = exports.config = exports.common = exports.codec = exports.chain = exports.auth = exports.actions = void 0;
-const transfer_1 = require("./actions/transfer");
-const bls_1 = require("./auth/bls");
-const ed25519_1 = require("./auth/ed25519");
-const typeParser_1 = require("./codec/typeParser");
-const endpoints_1 = require("./constants/endpoints");
-const hypervm_1 = require("./constants/hypervm");
-const rpc_1 = require("./services/rpc");
 exports.actions = __importStar(require("./actions"));
 exports.auth = __importStar(require("./auth"));
 exports.chain = __importStar(require("./chain"));
@@ -43,26 +36,6 @@ exports.consts = __importStar(require("./constants"));
 exports.crypto = __importStar(require("./crypto"));
 exports.services = __importStar(require("./services"));
 exports.utils = __importStar(require("./utils"));
-class HyperchainSDK {
-    nodeConfig;
-    // Hypervm services
-    rpcService;
-    // Registry
-    actionRegistry = new typeParser_1.TypeParser();
-    authRegistry = new typeParser_1.TypeParser();
-    constructor(nodeConfig) {
-        const defaultSDKConfig = {
-            baseApiUrl: endpoints_1.MAINNET_PUBLIC_API_BASE_URL,
-            blockchainId: endpoints_1.HYPERCHAIN_ID
-        };
-        this.nodeConfig = { ...defaultSDKConfig, ...nodeConfig };
-        // Hypervm services
-        this.rpcService = new rpc_1.RpcService(this.nodeConfig);
-        // Registry
-        this.actionRegistry.register(hypervm_1.TRANSFER_ID, transfer_1.Transfer.fromBytesCodec, false);
-        this.authRegistry.register(hypervm_1.BLS_ID, bls_1.BLS.fromBytesCodec, false);
-        this.authRegistry.register(hypervm_1.ED25519_ID, ed25519_1.ED25519.fromBytesCodec, false);
-    }
-}
-exports.HyperchainSDK = HyperchainSDK;
+var sdk_1 = require("./sdk");
+Object.defineProperty(exports, "HyperchainSDK", { enumerable: true, get: function () { return sdk_1.HyperchainSDK; } });
 //# sourceMappingURL=index.js.map
