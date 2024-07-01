@@ -7,6 +7,12 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "private": false,
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs.js"
+    }
+  },
   "files": [
     "dist",
     "README.md",
