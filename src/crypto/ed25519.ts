@@ -1,42 +1,49 @@
-import { utils } from '@avalabs/avalanchejs'
+import { utils } from "@avalabs/avalanchejs";
 import {
   sign as ed25519Sign,
   verify as ed25519Verify,
   etc
-} from '@noble/ed25519'
-import { createHash } from 'crypto'
+} from "@noble/ed25519";
+import { createHash as nodeCreateHash } from "crypto";
+import { createHash as browserCreateHash } from "crypto-browserify";
 
-export type PublicKey = Uint8Array
-export type SecretKey = Uint8Array
-export type Signature = Uint8Array
-export type Message = Uint8Array
+const isNode =
+  typeof process !== "undefined" &&
+  process.versions != null &&
+  process.versions.node != null;
+const createHash = isNode ? nodeCreateHash : browserCreateHash;
 
-export const PUBLIC_KEY_LENGTH = 32
-export const PRIVATE_KEY_LENGTH = 32
-export const SIGNATURE_LENGTH = 64
+export type PublicKey = Uint8Array;
+export type SecretKey = Uint8Array;
+export type Signature = Uint8Array;
+export type Message = Uint8Array;
+
+export const PUBLIC_KEY_LENGTH = 32;
+export const PRIVATE_KEY_LENGTH = 32;
+export const SIGNATURE_LENGTH = 64;
 
 export function secretKeyFromBytes(skBytes: Uint8Array | string): SecretKey {
-  return typeof skBytes === 'string' ? utils.hexToBuffer(skBytes) : skBytes
+  return typeof skBytes === "string" ? utils.hexToBuffer(skBytes) : skBytes;
 }
 
 export function secretKeyToBytes(sk: SecretKey): Uint8Array {
-  return sk
+  return sk;
 }
 
 export function publicKeyFromBytes(pkBytes: Uint8Array | string): PublicKey {
-  return typeof pkBytes === 'string' ? utils.hexToBuffer(pkBytes) : pkBytes
+  return typeof pkBytes === "string" ? utils.hexToBuffer(pkBytes) : pkBytes;
 }
 
 export function publicKeyToBytes(pk: PublicKey): Uint8Array {
-  return pk
+  return pk;
 }
 
 export function signatureFromBytes(sigBytes: Uint8Array): Signature {
-  return sigBytes
+  return sigBytes;
 }
 
 export function signatureToBytes(sig: Signature): Uint8Array {
-  return sig
+  return sig;
 }
 
 export function verify(
@@ -44,20 +51,20 @@ export function verify(
   sig: Signature,
   msg: Uint8Array | string
 ): boolean {
-  const message = typeof msg === 'string' ? utils.hexToBuffer(msg) : msg
-  return ed25519Verify(sig, message, pk)
+  const message = typeof msg === "string" ? utils.hexToBuffer(msg) : msg;
+  return ed25519Verify(sig, message, pk);
 }
 
 export function sign(msg: Uint8Array | string, sk: SecretKey): Uint8Array {
-  const message = typeof msg === 'string' ? utils.hexToBuffer(msg) : msg
-  return ed25519Sign(message, sk)
+  const message = typeof msg === "string" ? utils.hexToBuffer(msg) : msg;
+  return ed25519Sign(message, sk);
 }
 
 // Set the synchronous SHA-512 function
 etc.sha512Sync = (...messages: Uint8Array[]): Uint8Array => {
-  const hash = createHash('sha512')
+  const hash = createHash("sha512");
   for (const message of messages) {
-    hash.update(message)
+    hash.update(message);
   }
-  return new Uint8Array(hash.digest())
-}
+  return new Uint8Array(hash.digest());
+};

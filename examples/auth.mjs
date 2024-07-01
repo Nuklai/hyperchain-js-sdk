@@ -1,7 +1,8 @@
 // Copyright (C) 2024, Nuklai. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-import { HyperchainSDK, auth } from "../dist/index.js";
+import { HyperchainSDK, auth } from "../dist/index.esm.js";
+
 const sdk = new HyperchainSDK({
   baseApiUrl: "http://api-devnet.nuklaivm-dev.net:9650",
   blockchainId: "zepWp9PbeU9HLHebQ8gXkvxBYH5Bz4v8SoWXE6kyjjwNaMJfC"

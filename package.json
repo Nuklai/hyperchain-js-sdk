@@ -1,8 +1,9 @@
 {
   "name": "@nuklai/hyperchain-sdk",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "A JavaScript SDK for interacting with hyperchains providing modular services for HyperVM",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "private": false,
@@ -18,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Nuklai/nuklai-js-sdk.git"
+    "url": "git+https://github.com/Nuklai/Hyperchain-js-sdk.git"
   },
   "keywords": [
     "blockchain",
@@ -32,15 +33,25 @@
   "author": "Kiran Pachhai <kiran.pachhai@nukl.ai>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Nuklai/nuklai-js-sdk/issues"
+    "url": "https://github.com/Nuklai/hyperchain-js-sdk/issues"
   },
-  "homepage": "https://github.com/Nuklai/nuklai-js-sdk#readme",
+  "homepage": "https://github.com/Nuklai/hyperchain-js-sdk#readme",
   "devDependencies": {
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@types/jest": "^29.0.0",
     "@types/node": "^20.12.10",
     "esbuild": "^0.21.5",
+    "esbuild-plugin-alias": "^0.2.1",
     "jest": "^29.0.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "browserify-zlib": "^0.2.0",
+    "crypto-browserify": "^3.12.0",
+    "buffer": "^6.0.3",
+    "events": "^3.3.0",
+    "path": "^0.12.7",
+    "process": "^0.11.10",
+    "stream-browserify": "^3.0.0",
+    "util": "^0.12.5"
   },
   "dependencies": {
     "@avalabs/avalanchejs": "^4.0.5",
@@ -48,5 +59,14 @@
     "@noble/ed25519": "^2.1.0",
     "bech32": "^2.0.0",
     "big-integer": "^1.6.52"
+  },
+  "browser": {
+    "crypto": "crypto-browserify",
+    "stream": "stream-browserify",
+    "buffer": "buffer",
+    "zlib": "browserify-zlib",
+    "util": "util",
+    "process": "process",
+    "events": "events"
   }
 }

@@ -8,7 +8,7 @@ import {
   codec,
   consts,
   utils
-} from "../dist/index.js";
+} from "../dist/index.esm.js";
 
 const sdk = new HyperchainSDK({
   baseApiUrl: "http://api-devnet.nuklaivm-dev.net:9650",
