@@ -4,13 +4,32 @@
 import bigInt from 'big-integer'
 import { Action } from '../actions/action'
 import { AuthFactory } from '../auth/auth'
+import { Codec } from '../codec/codec'
 import { Genesis } from '../common/models'
-import { BYTE_LEN, UINT8_LEN } from '../constants/consts'
+import { BYTE_LEN, UINT64_LEN, UINT8_LEN } from '../constants/consts'
 import { STORAGE_BALANCE_CHUNKS } from '../constants/hypervm'
 import { BaseTxSize } from './baseTx'
 
-type Dimension = number[]
-const FeeDimensions: number = 5
+export type Dimension = number[]
+export const FeeDimensions: number = 5
+export const DimensionsLen = UINT64_LEN * FeeDimensions
+
+export function dimensionToBytes(d: Dimension): Uint8Array {
+  const codec = Codec.newWriter(DimensionsLen, DimensionsLen)
+  for (let i = 0; i < FeeDimensions; i++) {
+    codec.packUint64(BigInt(d[i]))
+  }
+  return codec.toBytes()
+}
+
+export function dimensionFromBytes(bytes: Uint8Array): [Dimension, Error?] {
+  const codec = Codec.newReader(bytes, DimensionsLen)
+  const dimension: Dimension = []
+  for (let i = 0; i < FeeDimensions; i++) {
+    dimension.push(Number(codec.unpackUint64(true)))
+  }
+  return [dimension, codec.getError()]
+}
 
 function mul64(a: number, b: number): bigint {
   return BigInt(a) * BigInt(b)

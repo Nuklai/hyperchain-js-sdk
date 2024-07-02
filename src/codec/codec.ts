@@ -116,12 +116,16 @@ export class Codec {
     this.offset += INT_LEN
   }
 
-  unpackInt(): number {
+  unpackInt(required: boolean): number {
     this.checkSpace(INT_LEN)
     if (this.error) return 0
 
     const value = new DataView(this.buffer.buffer).getUint32(this.offset, false)
     this.offset += INT_LEN
+
+    if (required && value === 0) {
+      this.addError(new Error('Int field is not populated'))
+    }
     return value
   }
 
@@ -180,13 +184,17 @@ export class Codec {
     this.packFixedBytes(bytes)
   }
 
-  unpackBytes(): Uint8Array {
-    const size = this.unpackInt()
-    return this.unpackFixedBytes(size)
+  unpackBytes(required: boolean): Uint8Array {
+    const size = this.unpackInt(true)
+    const bytes = this.unpackFixedBytes(size)
+    if (required && bytes.length === 0) {
+      this.addError(new Error('Bytes field is not populated'))
+    }
+    return bytes
   }
 
   unpackLimitedBytes(limit: number): Uint8Array {
-    const size = this.unpackInt()
+    const size = this.unpackInt(true)
     if (size > limit) {
       this.error = errOversized
       return new Uint8Array()
@@ -204,9 +212,13 @@ export class Codec {
     this.packFixedBytes(strBytes)
   }
 
-  unpackStr(): string {
+  unpackStr(required: boolean): string {
     const length = this.unpackShort()
-    return new TextDecoder().decode(this.unpackFixedBytes(length))
+    const string = new TextDecoder().decode(this.unpackFixedBytes(length))
+    if (required && string === '') {
+      this.addError(new Error('String field is not populated'))
+    }
+    return string
   }
 
   unpackLimitedStr(limit: number): string {
@@ -259,7 +271,7 @@ export class Codec {
   }
 
   unpackString(required: boolean): string {
-    const value = this.unpackStr()
+    const value = this.unpackStr(required)
     if (required && value === '') {
       this.addError(new Error('String field is not populated'))
     }

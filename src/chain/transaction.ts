@@ -2,6 +2,7 @@
 // See the file LICENSE for licensing terms.
 
 import { Id } from '@avalabs/avalanchejs'
+import _ from 'lodash'
 import { Action } from '../actions/action'
 import { Auth, AuthFactory } from '../auth/auth'
 import { Codec } from '../codec/codec'
@@ -158,6 +159,62 @@ export class Transaction {
     transaction.bytes = bytes
 
     return [transaction, codec.getError()]
+  }
+
+  static fromBytesCodec(
+    c: Codec,
+    actionRegistry: ActionRegistry,
+    authRegistry: AuthRegistry
+  ): [Transaction, Codec] {
+    let codec = _.cloneDeep(c)
+
+    // Unpack the base transaction
+    const baseBytes = codec.unpackFixedBytes(BaseTxSize)
+    let [base, err] = BaseTx.fromBytes(baseBytes)
+    if (err) {
+      return [new Transaction(base, []), codec]
+    }
+
+    // Unpack the number of actions
+    const numActions = codec.unpackByte()
+    if (numActions === 0) {
+      return [new Transaction(base, []), codec]
+    }
+
+    // Unpack each action
+    const actions: Action[] = []
+    for (let i = 0; i < numActions; i++) {
+      const actionTypeId = codec.unpackByte()
+      const [fromBytesAction, ok] = actionRegistry.lookupIndex(actionTypeId)
+      if (!ok) {
+        return [new Transaction(base, []), codec]
+      }
+      const [action, codecAction] = fromBytesAction(codec)
+      if (codecAction.getError()) {
+        return [new Transaction(base, []), codec]
+      }
+      codec = codecAction
+      actions.push(action)
+    }
+
+    const transaction = new Transaction(base, actions)
+    // Check if there are additional bytes for auth
+    if (codec.getOffset() < c.toBytes().length) {
+      const authTypeId = codec.unpackByte()
+      const [fromBytesAuth, ok] = authRegistry.lookupIndex(authTypeId)
+      if (!ok) {
+        return [new Transaction(base, []), codec]
+      }
+      const [auth, codecAuth] = fromBytesAuth(codec)
+      if (codecAuth.getError()) {
+        return [new Transaction(base, []), codec]
+      }
+      codec = codecAuth
+      transaction.auth = auth
+    }
+    transaction.bytes = codec.toBytes()
+
+    return [transaction, codec]
   }
 
   id(): Id {

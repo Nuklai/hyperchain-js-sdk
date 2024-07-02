@@ -34,3 +34,6 @@ export const MaxUint64Offset = 63
 export const MaxUint64 = BigInt('0xFFFFFFFFFFFFFFFF') // 18446744073709551615n
 export const MillisecondsPerSecond: bigint = BigInt(1000)
 export const MaxStringLen = 65535 // math.MaxUint16 in Go
+
+export const WINDOW_SIZE = 10
+export const WINDOW_ARRAY_SIZE = WINDOW_SIZE + UINT64_LEN
