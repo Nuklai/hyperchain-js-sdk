@@ -4,7 +4,7 @@ The Hyperchain SDK provides a modular and comprehensive interface for interactin
 
 ## Installation
 
-Install the Nuklai SDK via npm/yarn (NOTE: Currently does not work, so you need to build it locally):
+Install the Hyperchain SDK via npm/yarn
 
 ```bash
 npm install @nuklai/hyperchain-sdk
@@ -23,7 +23,7 @@ yarn build
 
 ## Examples
 
-The [examples directory](./examples) contains various example code to interact with the Nuklai SDK.
+The [examples directory](./examples) contains various example code to interact with the Hyperchain SDK.
 
 ## Usage
 
