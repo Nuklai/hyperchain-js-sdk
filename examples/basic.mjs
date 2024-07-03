@@ -11,6 +11,13 @@ const sdk = new HyperchainSDK({
 async function testSDK() {
   console.log('Starting SDK tests...')
 
+  try {
+    await sdk.wsService.connect()
+  } catch (error) {
+    console.error('Failed to establish WebSocket connection:', error)
+    return
+  }
+
   // Testing Health Status
   try {
     console.log('Fetching Health Status...')
