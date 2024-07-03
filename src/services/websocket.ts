@@ -1,45 +1,56 @@
-// Copyright (C) 2024, Nuklai. All rights reserved.
-// See the file LICENSE for licensing terms.
-
 import { Id } from '@avalabs/avalanchejs'
-import { ActionRegistry, AuthRegistry } from 'chain/dependencies'
-import WebSocket from 'ws'
 import { StatefulBlock } from '../chain/block'
+import { ActionRegistry, AuthRegistry } from '../chain/dependencies'
 import { Dimension, DimensionsLen, dimensionFromBytes } from '../chain/fees'
 import { Result } from '../chain/result'
 import { Transaction } from '../chain/transaction'
 import { Codec } from '../codec/codec'
 import { NodeConfig } from '../config'
 import { MaxInt } from '../constants/consts'
+import { getWebSocketClient, loadWebSocketClient } from './ws/client'
+
+// Custom WebSocket interface (Modified)
+interface CustomWebSocket {
+  onopen: ((this: WebSocket, ev: Event) => any) | null
+  onmessage: ((this: WebSocket, ev: MessageEvent<any>) => any) | null
+  onclose: ((this: WebSocket, ev: CloseEvent) => any) | null
+  onerror: ((this: WebSocket, ev: Event) => any) | null
+  send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void
+  close(code?: number, reason?: string): void
+}
 
 export class WebSocketService {
-  private ws: WebSocket
+  private config: NodeConfig
+  private ws!: CustomWebSocket
   private pendingBlocks: Array<Uint8Array> = []
   private pendingTxs: Array<Uint8Array> = []
   private closed: boolean = false
 
   constructor(config: NodeConfig) {
-    // TODO: get the websocket url from the config
-    this.ws = new WebSocket(this.getWebSocketUri(config.baseApiUrl))
+    this.config = config
   }
 
   async connect() {
-    this.ws.on('open', () => {
+    await loadWebSocketClient()
+    const WebSocketClient = getWebSocketClient()
+    // TODO: get the websocket url from the config
+    this.ws = new WebSocketClient(this.getWebSocketUri(this.config.baseApiUrl))
+    this.ws.onopen = () => {
       console.log('WebSocket connection opened.')
-    })
+    }
 
-    this.ws.on('message', (data: WebSocket.Data) => {
-      this.handleMessage(data)
-    })
+    this.ws.onmessage = async (event: any) => {
+      await this.handleMessage(event.data)
+    }
 
-    this.ws.on('close', () => {
+    this.ws.onclose = () => {
       this.closed = true
       console.log('WebSocket connection closed.')
-    })
+    }
 
-    this.ws.on('error', (err: Error) => {
+    this.ws.onerror = (err: any) => {
       console.error('WebSocket error:', err)
-    })
+    }
   }
 
   private getWebSocketUri(apiUrl: string): string {
@@ -49,17 +60,33 @@ export class WebSocketService {
     return uri
   }
 
-  private handleMessage(data: WebSocket.Data) {
-    const msg = new Uint8Array(data as ArrayBuffer)
-    const messageType = msg[0]
-    const message = msg.slice(1)
+  private async handleMessage(
+    data: string | ArrayBufferLike | Blob | ArrayBufferView
+  ) {
+    let message: Uint8Array
+
+    if (typeof Blob !== 'undefined' && data instanceof Blob) {
+      const arrayBuffer = await data.arrayBuffer()
+      message = new Uint8Array(arrayBuffer)
+    } else if (typeof Buffer !== 'undefined' && data instanceof Buffer) {
+      message = new Uint8Array(data)
+    } else if (data instanceof ArrayBuffer) {
+      message = new Uint8Array(data)
+    } else if (typeof data === 'string') {
+      message = new Uint8Array(Buffer.from(data))
+    } else {
+      throw new Error(`Unsupported WebSocket message type: ${typeof data}`)
+    }
+
+    const messageType = message[0]
+    const messageContent = message.slice(1)
 
     switch (messageType) {
       case 0: // BlockMode
-        this.pendingBlocks.push(message)
+        this.pendingBlocks.push(messageContent)
         break
       case 1: // TxMode
-        this.pendingTxs.push(message)
+        this.pendingTxs.push(messageContent)
         break
       default:
         console.warn('Unexpected WebSocket message type:', messageType)

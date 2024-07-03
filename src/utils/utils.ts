@@ -46,3 +46,11 @@ export function bufferEquals(buf1: Uint8Array, buf2: Uint8Array): boolean {
 export function toAssetID(asset: string): Id {
   return asset.toUpperCase() === SYMBOL ? EMPTY_ID : Id.fromString(asset)
 }
+
+export function isNodeEnvironment(): boolean {
+  return (
+    typeof process !== 'undefined' &&
+    process.versions != null &&
+    process.versions.node != null
+  )
+}
