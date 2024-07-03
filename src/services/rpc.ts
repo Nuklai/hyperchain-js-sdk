@@ -19,14 +19,14 @@ import {
   SubmitTransactionResponse
 } from '../common/models'
 import { NodeConfig } from '../config'
-import { COREAPI_METHOD_PREFIX, COREAPI_PATH } from '../constants/endpoints'
+import { COREAPI_METHOD_PREFIX, JSONRPC_ENDPOINT } from '../constants/endpoints'
 import { getUnixRMilli } from '../utils/utils'
 
 export class RpcService extends Api {
   constructor(protected config: NodeConfig) {
     super(
       config.baseApiUrl,
-      `/ext/bc/${config.blockchainId}/${COREAPI_PATH}`,
+      `/ext/bc/${config.blockchainId}/${JSONRPC_ENDPOINT}`,
       COREAPI_METHOD_PREFIX
     )
   }

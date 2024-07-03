@@ -3,6 +3,7 @@ import { DimensionsLen, dimensionFromBytes } from '../chain/fees';
 import { Result } from '../chain/result';
 import { Codec } from '../codec/codec';
 import { MaxInt } from '../constants/consts';
+import { WEBSOCKET_ENDPOINT } from '../constants/endpoints';
 import { getWebSocketClient, loadWebSocketClient } from './ws/client';
 export class WebSocketService {
     config;
@@ -33,9 +34,14 @@ export class WebSocketService {
         };
     }
     getWebSocketUri(apiUrl) {
-        let uri = apiUrl.replace(/^http/, 'ws');
-        uri = uri.endsWith('/') ? uri : `${uri}/`;
-        uri += 'ws';
+        let uri = apiUrl.replace(/http:\/\//g, 'ws://');
+        uri = uri.replace(/https:\/\//g, 'wss://');
+        if (!uri.startsWith('ws')) {
+            // fallback to default usage
+            uri = 'ws://' + uri;
+        }
+        uri = uri.replace(/\/$/, '');
+        uri += `/${WEBSOCKET_ENDPOINT}`;
         return uri;
     }
     async handleMessage(data) {

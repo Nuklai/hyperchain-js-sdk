@@ -2,8 +2,8 @@
 // See the file LICENSE for licensing terms.
 
 import {
-  COREAPI_PATH,
   HYPERCHAIN_ENDPOINT,
+  JSONRPC_ENDPOINT,
   MAINNET_PUBLIC_API_BASE_URL
 } from '../constants/endpoints'
 import { JrpcProvider } from './rpc'
@@ -13,7 +13,7 @@ export abstract class Api {
 
   constructor(
     baseURL: string = MAINNET_PUBLIC_API_BASE_URL,
-    protected path: string = `${HYPERCHAIN_ENDPOINT}/${COREAPI_PATH}`,
+    protected path: string = `${HYPERCHAIN_ENDPOINT}/${JSONRPC_ENDPOINT}`,
     protected base?: string,
     protected fetchOptions?: RequestInit
   ) {

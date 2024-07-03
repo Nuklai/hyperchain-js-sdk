@@ -7,6 +7,7 @@ import { Transaction } from '../chain/transaction'
 import { Codec } from '../codec/codec'
 import { NodeConfig } from '../config'
 import { MaxInt } from '../constants/consts'
+import { WEBSOCKET_ENDPOINT } from '../constants/endpoints'
 import { getWebSocketClient, loadWebSocketClient } from './ws/client'
 
 // Custom WebSocket interface (Modified)
@@ -54,9 +55,14 @@ export class WebSocketService {
   }
 
   private getWebSocketUri(apiUrl: string): string {
-    let uri = apiUrl.replace(/^http/, 'ws')
-    uri = uri.endsWith('/') ? uri : `${uri}/`
-    uri += 'ws'
+    let uri = apiUrl.replace(/http:\/\//g, 'ws://')
+    uri = uri.replace(/https:\/\//g, 'wss://')
+    if (!uri.startsWith('ws')) {
+      // fallback to default usage
+      uri = 'ws://' + uri
+    }
+    uri = uri.replace(/\/$/, '')
+    uri += `/${WEBSOCKET_ENDPOINT}`
     return uri
   }
 

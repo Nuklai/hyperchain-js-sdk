@@ -5,12 +5,12 @@ import { BaseTx } from '../chain/baseTx';
 import { estimateUnits, mulSum } from '../chain/fees';
 import { Transaction } from '../chain/transaction';
 import { Api } from '../common/baseApi';
-import { COREAPI_METHOD_PREFIX, COREAPI_PATH } from '../constants/endpoints';
+import { COREAPI_METHOD_PREFIX, JSONRPC_ENDPOINT } from '../constants/endpoints';
 import { getUnixRMilli } from '../utils/utils';
 export class RpcService extends Api {
     config;
     constructor(config) {
-        super(config.baseApiUrl, `/ext/bc/${config.blockchainId}/${COREAPI_PATH}`, COREAPI_METHOD_PREFIX);
+        super(config.baseApiUrl, `/ext/bc/${config.blockchainId}/${JSONRPC_ENDPOINT}`, COREAPI_METHOD_PREFIX);
         this.config = config;
     }
     ping() {

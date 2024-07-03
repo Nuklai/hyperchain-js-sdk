@@ -9,5 +9,6 @@ export const TESTNET_PUBLIC_API_BASE_URL =
 export const HYPERCHAIN_ID = 'zepWp9PbeU9HLHebQ8gXkvxBYH5Bz4v8SoWXE6kyjjwNaMJfC'
 export const HYPERCHAIN_ENDPOINT = `/ext/bc/${HYPERCHAIN_ID}`
 
-export const COREAPI_PATH = 'coreapi'
 export const COREAPI_METHOD_PREFIX = 'hypersdk'
+export const JSONRPC_ENDPOINT = 'coreapi'
+export const WEBSOCKET_ENDPOINT = 'corews'
