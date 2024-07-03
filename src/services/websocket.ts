@@ -21,21 +21,21 @@ interface CustomWebSocket {
 }
 
 export class WebSocketService {
-  private config: NodeConfig
+  public websocketURL: string
   private ws!: CustomWebSocket
   private pendingBlocks: Array<Uint8Array> = []
   private pendingTxs: Array<Uint8Array> = []
   private closed: boolean = false
 
   constructor(config: NodeConfig) {
-    this.config = config
+    this.websocketURL = this.getWebSocketUri(config.baseApiUrl)
   }
 
   async connect() {
     await loadWebSocketClient()
     const WebSocketClient = getWebSocketClient()
     // TODO: get the websocket url from the config
-    this.ws = new WebSocketClient(this.getWebSocketUri(this.config.baseApiUrl))
+    this.ws = new WebSocketClient(this.websocketURL)
     this.ws.onopen = () => {
       console.log('WebSocket connection opened.')
     }

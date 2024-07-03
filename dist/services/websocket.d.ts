@@ -6,7 +6,7 @@ import { Result } from '../chain/result';
 import { Transaction } from '../chain/transaction';
 import { NodeConfig } from '../config';
 export declare class WebSocketService {
-    private config;
+    websocketURL: string;
     private ws;
     private pendingBlocks;
     private pendingTxs;
