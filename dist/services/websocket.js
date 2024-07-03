@@ -12,7 +12,7 @@ export class WebSocketService {
     pendingTxs = [];
     closed = false;
     constructor(config) {
-        this.uri = this.getWebSocketUri(config.baseApiUrl);
+        this.uri = this.getWebSocketUri(config.baseApiUrl + `/ext/bc/${config.blockchainId}/${WEBSOCKET_ENDPOINT}`);
     }
     async connect() {
         await loadWebSocketClient();
@@ -41,7 +41,6 @@ export class WebSocketService {
             uri = 'ws://' + uri;
         }
         uri = uri.replace(/\/$/, '');
-        uri += `/${WEBSOCKET_ENDPOINT}`;
         return uri;
     }
     async handleMessage(data) {

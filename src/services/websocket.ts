@@ -28,7 +28,9 @@ export class WebSocketService {
   private closed: boolean = false
 
   constructor(config: NodeConfig) {
-    this.uri = this.getWebSocketUri(config.baseApiUrl)
+    this.uri = this.getWebSocketUri(
+      config.baseApiUrl + `/ext/bc/${config.blockchainId}/${WEBSOCKET_ENDPOINT}`
+    )
   }
 
   async connect() {
@@ -62,7 +64,6 @@ export class WebSocketService {
       uri = 'ws://' + uri
     }
     uri = uri.replace(/\/$/, '')
-    uri += `/${WEBSOCKET_ENDPOINT}`
     return uri
   }
 

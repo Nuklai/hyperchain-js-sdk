@@ -37555,7 +37555,9 @@ var WebSocketService = class {
   pendingTxs = [];
   closed = false;
   constructor(config) {
-    this.uri = this.getWebSocketUri(config.baseApiUrl);
+    this.uri = this.getWebSocketUri(
+      config.baseApiUrl + `/ext/bc/${config.blockchainId}/${WEBSOCKET_ENDPOINT}`
+    );
   }
   async connect() {
     await loadWebSocketClient();
@@ -37582,7 +37584,6 @@ var WebSocketService = class {
       uri = "ws://" + uri;
     }
     uri = uri.replace(/\/$/, "");
-    uri += `/${WEBSOCKET_ENDPOINT}`;
     return uri;
   }
   async handleMessage(data) {

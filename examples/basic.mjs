@@ -11,6 +11,8 @@ const sdk = new HyperchainSDK({
 async function testSDK() {
   console.log('Starting SDK tests...')
 
+  console.log(sdk.wsService.uri)
+
   // Testing Health Status
   try {
     console.log('Fetching Health Status...')
