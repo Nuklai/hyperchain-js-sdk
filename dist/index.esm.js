@@ -48171,18 +48171,18 @@ function getWebSocketClient() {
 
 // src/services/websocket.ts
 var WebSocketService = class {
-  websocketURL;
+  uri;
   ws;
   pendingBlocks = [];
   pendingTxs = [];
   closed = false;
   constructor(config) {
-    this.websocketURL = this.getWebSocketUri(config.baseApiUrl);
+    this.uri = this.getWebSocketUri(config.baseApiUrl);
   }
   async connect() {
     await loadWebSocketClient();
     const WebSocketClient2 = getWebSocketClient();
-    this.ws = new WebSocketClient2(this.websocketURL);
+    this.ws = new WebSocketClient2(this.uri);
     this.ws.onopen = () => {
       console.log("WebSocket connection opened.");
     };

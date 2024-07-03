@@ -6,19 +6,19 @@ import { MaxInt } from '../constants/consts';
 import { WEBSOCKET_ENDPOINT } from '../constants/endpoints';
 import { getWebSocketClient, loadWebSocketClient } from './ws/client';
 export class WebSocketService {
-    websocketURL;
+    uri;
     ws;
     pendingBlocks = [];
     pendingTxs = [];
     closed = false;
     constructor(config) {
-        this.websocketURL = this.getWebSocketUri(config.baseApiUrl);
+        this.uri = this.getWebSocketUri(config.baseApiUrl);
     }
     async connect() {
         await loadWebSocketClient();
         const WebSocketClient = getWebSocketClient();
         // TODO: get the websocket url from the config
-        this.ws = new WebSocketClient(this.websocketURL);
+        this.ws = new WebSocketClient(this.uri);
         this.ws.onopen = () => {
             console.log('WebSocket connection opened.');
         };
