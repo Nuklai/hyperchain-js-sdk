@@ -37630,7 +37630,10 @@ var WebSocketService = class {
   }
   async registerTx(tx) {
     if (!this.isOpen) throw new Error("WebSocket is not open.");
-    const txBytes = tx.toBytes();
+    const [txBytes, err2] = tx.toBytes();
+    if (err2) {
+      throw err2;
+    }
     console.log("Registering transaction:", txBytes);
     this.ws.send(
       JSON.stringify({
