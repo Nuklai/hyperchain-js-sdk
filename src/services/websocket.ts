@@ -76,6 +76,10 @@ class MessageBuffer {
     this.queue = []
     return result
   }
+
+  hasMessages(): boolean {
+    return this.queue.length > 0
+  }
 }
 
 export class WebSocketService {
@@ -171,10 +175,12 @@ export class WebSocketService {
     console.log('WebSocketService.writeLoop started')
     try {
       while (this.conn.readyState === WebSocket.OPEN) {
-        const queue = this.mb.getQueue()
-        for (const msg of queue) {
-          console.log('Sending message:', msg)
-          this.conn.send(msg)
+        if (this.mb.hasMessages()) {
+          const queue = this.mb.getQueue()
+          for (const msg of queue) {
+            console.log('Sending message:', msg)
+            this.conn.send(msg)
+          }
         }
         // Throttle the loop to prevent it from running too fast
         await new Promise((resolve) => setTimeout(resolve, 100))

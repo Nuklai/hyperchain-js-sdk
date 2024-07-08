@@ -37583,6 +37583,9 @@ var MessageBuffer = class {
     this.queue = [];
     return result;
   }
+  hasMessages() {
+    return this.queue.length > 0;
+  }
 };
 var WebSocketService = class {
   uri;
@@ -37670,10 +37673,12 @@ var WebSocketService = class {
     console.log("WebSocketService.writeLoop started");
     try {
       while (this.conn.readyState === WebSocket.OPEN) {
-        const queue = this.mb.getQueue();
-        for (const msg of queue) {
-          console.log("Sending message:", msg);
-          this.conn.send(msg);
+        if (this.mb.hasMessages()) {
+          const queue = this.mb.getQueue();
+          for (const msg of queue) {
+            console.log("Sending message:", msg);
+            this.conn.send(msg);
+          }
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
