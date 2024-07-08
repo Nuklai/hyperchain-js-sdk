@@ -107,21 +107,24 @@ export class WebSocketService {
             while (this.conn.readyState === WebSocket.OPEN) {
                 const event = await new Promise((resolve) => (this.conn.onmessage = resolve));
                 console.log('WebSocket message received:', event);
-                const msgBatch = new Uint8Array(event.data);
+                const msgBatch = new Uint8Array(await event.data.arrayBuffer()); // Adjusted for data type
                 if (msgBatch.length === 0) {
                     console.warn('got empty message');
                     continue;
                 }
                 const codec = Codec.newReader(msgBatch, MaxInt);
                 const msgCount = codec.unpackInt(false);
+                console.log('Processing message batch, msgCount:', msgCount);
                 for (let i = 0; i < msgCount; i++) {
                     const msg = codec.unpackBytes(false);
                     const mode = msg[0];
                     const tmsg = msg.slice(1);
                     if (mode === BlockMode) {
+                        console.log('Block mode message:', tmsg);
                         this.pendingBlocks.push(tmsg);
                     }
                     else if (mode === TxMode) {
+                        console.log('Tx mode message:', tmsg);
                         this.pendingTxs.push(tmsg);
                     }
                     else {
