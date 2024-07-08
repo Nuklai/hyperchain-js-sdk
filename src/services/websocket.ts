@@ -6,11 +6,12 @@ import { Result } from '../chain/result'
 import { Transaction } from '../chain/transaction'
 import { Codec } from '../codec/codec'
 import { NodeConfig } from '../config'
-import { MaxInt } from '../constants/consts'
+import { MaxInt, NETWORK_SIZE_LIMIT } from '../constants/consts'
 import { WEBSOCKET_ENDPOINT } from '../constants/endpoints'
 import { getWebSocketClient, loadWebSocketClient } from './ws/client'
 
-// Custom WebSocket interface (Modified)
+type WebSocketMessageType = 'block' | 'tx'
+
 interface CustomWebSocket {
   onopen: ((this: WebSocket, ev: Event) => any) | null
   onmessage: ((this: WebSocket, ev: MessageEvent<any>) => any) | null
@@ -20,9 +21,70 @@ interface CustomWebSocket {
   close(code?: number, reason?: string): void
 }
 
+class MessageBuffer {
+  private queue: Array<Uint8Array> = []
+  private maxSize: number
+  private timeout: number
+  private pending: Array<Uint8Array> = []
+  private pendingSize: number = 0
+  private timerId: NodeJS.Timeout | null = null
+
+  constructor(maxSize: number, timeout: number) {
+    this.maxSize = maxSize
+    this.timeout = timeout
+  }
+
+  send(msg: Uint8Array) {
+    const msgLength = msg.length
+
+    if (msgLength > this.maxSize) {
+      throw new Error('Message too large')
+    }
+
+    if (this.pendingSize + msgLength > this.maxSize) {
+      this.clearPending()
+    }
+
+    this.pendingSize += msgLength
+    this.pending.push(msg)
+
+    if (this.pending.length === 1) {
+      this.timerId = setTimeout(() => this.clearPending(), this.timeout)
+    }
+  }
+
+  clearPending() {
+    if (this.pending.length === 0) {
+      return
+    }
+
+    const codec = Codec.newWriter(this.maxSize, this.maxSize)
+    codec.packInt(this.pending.length)
+    for (const msg of this.pending) {
+      codec.packBytes(msg)
+    }
+
+    this.queue.push(codec.toBytes())
+    this.pending = []
+    this.pendingSize = 0
+
+    if (this.timerId) {
+      clearTimeout(this.timerId)
+      this.timerId = null
+    }
+  }
+
+  getQueue(): Array<Uint8Array> {
+    const result = this.queue
+    this.queue = []
+    return result
+  }
+}
+
 export class WebSocketService {
   public uri: string
   private ws!: CustomWebSocket
+  private messageBuffer: MessageBuffer
   private pendingBlocks: Array<Uint8Array> = []
   private pendingTxs: Array<Uint8Array> = []
   private isOpen: boolean = false
@@ -31,6 +93,7 @@ export class WebSocketService {
     this.uri = this.getWebSocketUri(
       config.baseApiUrl + `/ext/bc/${config.blockchainId}/${WEBSOCKET_ENDPOINT}`
     )
+    this.messageBuffer = new MessageBuffer(NETWORK_SIZE_LIMIT, 1000 * 10) // 10 second timeout
   }
 
   async connect() {
@@ -66,10 +129,10 @@ export class WebSocketService {
     let uri = apiUrl.replace(/http:\/\//g, 'ws://')
     uri = uri.replace(/https:\/\//g, 'wss://')
     if (!uri.startsWith('ws')) {
-      // fallback to default usage
       uri = 'ws://' + uri
     }
     uri = uri.replace(/\/$/, '')
+    uri += '/ws'
     return uri
   }
 
@@ -115,7 +178,8 @@ export class WebSocketService {
   async registerBlocks() {
     if (!this.isOpen) throw new Error('WebSocket is not open.')
     console.log('Registering for block updates...')
-    this.ws.send(new Uint8Array([0])) // 0 for BlockMode
+    this.messageBuffer.send(new Uint8Array([0])) // 0 for BlockMode
+    this.flushMessages()
   }
 
   async registerTx(tx: Transaction) {
@@ -125,7 +189,18 @@ export class WebSocketService {
       throw err
     }
     console.log('Registering transaction:', txBytes)
-    this.ws.send(new Uint8Array([1, ...txBytes])) // 1 for TxMode followed by transaction bytes
+    const data = new Uint8Array(1 + txBytes.length)
+    data.set([1], 0)
+    data.set(txBytes, 1)
+    this.messageBuffer.send(data) // 1 for TxMode followed by transaction bytes
+    this.flushMessages()
+  }
+
+  private flushMessages() {
+    const messages = this.messageBuffer.getQueue()
+    for (const message of messages) {
+      this.ws.send(message)
+    }
   }
 
   async listenBlock(

@@ -37548,9 +37548,58 @@ function getWebSocketClient() {
 }
 
 // src/services/websocket.ts
+var MessageBuffer = class {
+  queue = [];
+  maxSize;
+  timeout;
+  pending = [];
+  pendingSize = 0;
+  timerId = null;
+  constructor(maxSize, timeout) {
+    this.maxSize = maxSize;
+    this.timeout = timeout;
+  }
+  send(msg) {
+    const msgLength = msg.length;
+    if (msgLength > this.maxSize) {
+      throw new Error("Message too large");
+    }
+    if (this.pendingSize + msgLength > this.maxSize) {
+      this.clearPending();
+    }
+    this.pendingSize += msgLength;
+    this.pending.push(msg);
+    if (this.pending.length === 1) {
+      this.timerId = setTimeout(() => this.clearPending(), this.timeout);
+    }
+  }
+  clearPending() {
+    if (this.pending.length === 0) {
+      return;
+    }
+    const codec = Codec.newWriter(this.maxSize, this.maxSize);
+    codec.packInt(this.pending.length);
+    for (const msg of this.pending) {
+      codec.packBytes(msg);
+    }
+    this.queue.push(codec.toBytes());
+    this.pending = [];
+    this.pendingSize = 0;
+    if (this.timerId) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
+  }
+  getQueue() {
+    const result = this.queue;
+    this.queue = [];
+    return result;
+  }
+};
 var WebSocketService = class {
   uri;
   ws;
+  messageBuffer;
   pendingBlocks = [];
   pendingTxs = [];
   isOpen = false;
@@ -37558,6 +37607,7 @@ var WebSocketService = class {
     this.uri = this.getWebSocketUri(
       config.baseApiUrl + `/ext/bc/${config.blockchainId}/${WEBSOCKET_ENDPOINT}`
     );
+    this.messageBuffer = new MessageBuffer(NETWORK_SIZE_LIMIT, 1e3 * 10);
   }
   async connect() {
     await loadWebSocketClient();
@@ -37590,6 +37640,7 @@ var WebSocketService = class {
       uri = "ws://" + uri;
     }
     uri = uri.replace(/\/$/, "");
+    uri += "/ws";
     return uri;
   }
   async handleMessage(data) {
@@ -37626,7 +37677,8 @@ var WebSocketService = class {
   async registerBlocks() {
     if (!this.isOpen) throw new Error("WebSocket is not open.");
     console.log("Registering for block updates...");
-    this.ws.send(new Uint8Array([0]));
+    this.messageBuffer.send(new Uint8Array([0]));
+    this.flushMessages();
   }
   async registerTx(tx) {
     if (!this.isOpen) throw new Error("WebSocket is not open.");
@@ -37635,7 +37687,17 @@ var WebSocketService = class {
       throw err2;
     }
     console.log("Registering transaction:", txBytes);
-    this.ws.send(new Uint8Array([1, ...txBytes]));
+    const data = new Uint8Array(1 + txBytes.length);
+    data.set([1], 0);
+    data.set(txBytes, 1);
+    this.messageBuffer.send(data);
+    this.flushMessages();
+  }
+  flushMessages() {
+    const messages = this.messageBuffer.getQueue();
+    for (const message of messages) {
+      this.ws.send(message);
+    }
   }
   async listenBlock(actionRegistry, authRegistry) {
     if (!this.isOpen) throw new Error("WebSocket is not open.");

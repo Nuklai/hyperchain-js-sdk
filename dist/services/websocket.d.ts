@@ -8,6 +8,7 @@ import { NodeConfig } from '../config';
 export declare class WebSocketService {
     uri: string;
     private ws;
+    private messageBuffer;
     private pendingBlocks;
     private pendingTxs;
     private isOpen;
@@ -17,6 +18,7 @@ export declare class WebSocketService {
     private handleMessage;
     registerBlocks(): Promise<void>;
     registerTx(tx: Transaction): Promise<void>;
+    private flushMessages;
     listenBlock(actionRegistry: ActionRegistry, authRegistry: AuthRegistry): Promise<[StatefulBlock, Array<Result>, Dimension, Error?]>;
     listenTx(): Promise<[Id, Error?, Result?, Error?]>;
     close(): Promise<void>;
