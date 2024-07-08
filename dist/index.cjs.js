@@ -37640,7 +37640,6 @@ var WebSocketService = class {
       uri = "ws://" + uri;
     }
     uri = uri.replace(/\/$/, "");
-    uri += "/ws";
     return uri;
   }
   async handleMessage(data) {

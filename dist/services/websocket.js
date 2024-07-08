@@ -95,7 +95,6 @@ export class WebSocketService {
             uri = 'ws://' + uri;
         }
         uri = uri.replace(/\/$/, '');
-        uri += '/ws';
         return uri;
     }
     async handleMessage(data) {
