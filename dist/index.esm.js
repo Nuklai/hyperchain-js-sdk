@@ -48164,13 +48164,13 @@ var MessageBuffer = class {
     this.timeout = timeout;
   }
   send(msg) {
-    console.debug("MessageBuffer.send called with msg:", msg);
+    console.log("MessageBuffer.send called with msg:", msg);
     const msgLength = msg.length;
     if (msgLength > this.maxSize) {
       throw new Error("Message too large");
     }
     if (this.pendingSize + msgLength > this.maxSize) {
-      console.debug(
+      console.log(
         "MessageBuffer: pendingSize exceeded, clearing pending messages"
       );
       this.clearPending();
@@ -48182,7 +48182,7 @@ var MessageBuffer = class {
     }
   }
   clearPending() {
-    console.debug("MessageBuffer.clearPending called");
+    console.log("MessageBuffer.clearPending called");
     if (this.pending.length === 0) {
       return;
     }
@@ -48200,7 +48200,7 @@ var MessageBuffer = class {
     }
   }
   getQueue() {
-    console.debug("MessageBuffer.getQueue called");
+    console.log("MessageBuffer.getQueue called");
     const result = this.queue;
     this.queue = [];
     return result;
@@ -48224,10 +48224,10 @@ var WebSocketService = class {
     this.mb = new MessageBuffer(NETWORK_SIZE_LIMIT, 1e3 * 10);
   }
   async connect() {
-    console.debug("WebSocketService.connect called, connecting to:", this.uri);
+    console.log("WebSocketService.connect called, connecting to:", this.uri);
     this.conn = new WebSocket(this.uri);
     this.conn.onopen = () => {
-      console.debug("WebSocket connection opened");
+      console.log("WebSocket connection opened");
       this.readLoop();
       this.writeLoop();
     };
@@ -48238,7 +48238,7 @@ var WebSocketService = class {
     };
   }
   getWebSocketUri(apiUrl) {
-    console.debug(
+    console.log(
       "WebSocketService.getWebSocketUri called with apiUrl:",
       apiUrl
     );
@@ -48248,17 +48248,17 @@ var WebSocketService = class {
       uri = "ws://" + uri;
     }
     uri = uri.replace(/\/$/, "");
-    console.debug("WebSocket URI constructed:", uri);
+    console.log("WebSocket URI constructed:", uri);
     return uri;
   }
   async readLoop() {
-    console.debug("WebSocketService.readLoop started");
+    console.log("WebSocketService.readLoop started");
     try {
       while (this.conn.readyState === WebSocket.OPEN) {
         const event = await new Promise(
           (resolve) => this.conn.onmessage = resolve
         );
-        console.debug("WebSocket message received:", event);
+        console.log("WebSocket message received:", event);
         const msgBatch = new Uint8Array(event.data);
         if (msgBatch.length === 0) {
           console.warn("got empty message");
@@ -48285,16 +48285,16 @@ var WebSocketService = class {
       this.close();
     } finally {
       this.readStopped = true;
-      console.debug("WebSocketService.readLoop stopped");
+      console.log("WebSocketService.readLoop stopped");
     }
   }
   async writeLoop() {
-    console.debug("WebSocketService.writeLoop started");
+    console.log("WebSocketService.writeLoop started");
     try {
       while (this.conn.readyState === WebSocket.OPEN) {
         const queue = this.mb.getQueue();
         for (const msg of queue) {
-          console.debug("Sending message:", msg);
+          console.log("Sending message:", msg);
           this.conn.send(msg);
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -48305,22 +48305,22 @@ var WebSocketService = class {
       this.close();
     } finally {
       this.writeStopped = true;
-      console.debug("WebSocketService.writeLoop stopped");
+      console.log("WebSocketService.writeLoop stopped");
     }
   }
   async registerBlocks() {
-    console.debug("WebSocketService.registerBlocks called");
+    console.log("WebSocketService.registerBlocks called");
     if (this.closed) {
       throw new Error("Connection is closed");
     }
     this.mb.send(new Uint8Array([BlockMode]));
   }
   async listenBlock(actionRegistry, authRegistry) {
-    console.debug("WebSocketService.listenBlock called");
+    console.log("WebSocketService.listenBlock called");
     while (!this.readStopped) {
       const msg = this.pendingBlocks.shift();
       if (msg) {
-        console.debug("Block message received:", msg);
+        console.log("Block message received:", msg);
         return this.unpackBlockMessage(msg, actionRegistry, authRegistry);
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -48328,7 +48328,7 @@ var WebSocketService = class {
     throw this.err;
   }
   async registerTx(tx) {
-    console.debug("WebSocketService.registerTx called with transaction:", tx);
+    console.log("WebSocketService.registerTx called with transaction:", tx);
     if (this.closed) {
       throw new Error("Connection is closed");
     }
@@ -48342,11 +48342,11 @@ var WebSocketService = class {
     this.mb.send(msg);
   }
   async listenTx() {
-    console.debug("WebSocketService.listenTx called");
+    console.log("WebSocketService.listenTx called");
     while (!this.readStopped) {
       const msg = this.pendingTxs.shift();
       if (msg) {
-        console.debug("Transaction message received:", msg);
+        console.log("Transaction message received:", msg);
         return this.unpackTxMessage(msg);
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -48354,7 +48354,7 @@ var WebSocketService = class {
     throw this.err;
   }
   close() {
-    console.debug("WebSocketService.close called");
+    console.log("WebSocketService.close called");
     if (!this.startedClose) {
       this.startedClose = true;
       this.conn.close();
@@ -48362,7 +48362,7 @@ var WebSocketService = class {
     }
   }
   unpackBlockMessage(msg, actionRegistry, authRegistry) {
-    console.debug(
+    console.log(
       "WebSocketService.unpackBlockMessage called with message:",
       msg
     );
@@ -48393,11 +48393,11 @@ var WebSocketService = class {
     if (!codec.empty()) {
       return Promise.reject(new Error("Invalid object"));
     }
-    console.debug("Block message unpacked successfully");
+    console.log("Block message unpacked successfully");
     return Promise.resolve([block, results, prices]);
   }
   unpackTxMessage(msg) {
-    console.debug("WebSocketService.unpackTxMessage called with message:", msg);
+    console.log("WebSocketService.unpackTxMessage called with message:", msg);
     const codec = Codec.newReader(msg, MaxInt);
     const txId = codec.unpackID(true);
     const hasError = codec.unpackBool();
@@ -48411,7 +48411,7 @@ var WebSocketService = class {
       console.error("Error unpacking transaction result:", err2);
       return Promise.reject(err2);
     }
-    console.debug("Transaction message unpacked successfully");
+    console.log("Transaction message unpacked successfully");
     return Promise.resolve([txId, void 0, result, codec.getError()]);
   }
 };
