@@ -10,7 +10,7 @@ export declare class WebSocketService {
     private ws;
     private pendingBlocks;
     private pendingTxs;
-    private closed;
+    private isOpen;
     constructor(config: NodeConfig);
     connect(): Promise<void>;
     private getWebSocketUri;

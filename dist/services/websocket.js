@@ -10,28 +10,32 @@ export class WebSocketService {
     ws;
     pendingBlocks = [];
     pendingTxs = [];
-    closed = false;
+    isOpen = false;
     constructor(config) {
         this.uri = this.getWebSocketUri(config.baseApiUrl + `/ext/bc/${config.blockchainId}/${WEBSOCKET_ENDPOINT}`);
     }
     async connect() {
         await loadWebSocketClient();
         const WebSocketClient = getWebSocketClient();
-        // TODO: get the websocket url from the config
         this.ws = new WebSocketClient(this.uri);
-        this.ws.onopen = () => {
-            console.log('WebSocket connection opened.');
-        };
-        this.ws.onmessage = async (event) => {
-            await this.handleMessage(event.data);
-        };
-        this.ws.onclose = () => {
-            this.closed = true;
-            console.log('WebSocket connection closed.');
-        };
-        this.ws.onerror = (err) => {
-            console.error('WebSocket error:', err);
-        };
+        return new Promise((resolve, reject) => {
+            this.ws.onopen = () => {
+                console.log('WebSocket connection opened.');
+                this.isOpen = true;
+                resolve();
+            };
+            this.ws.onmessage = async (event) => {
+                await this.handleMessage(event.data);
+            };
+            this.ws.onclose = () => {
+                this.isOpen = false;
+                console.log('WebSocket connection closed.');
+            };
+            this.ws.onerror = (err) => {
+                console.error('WebSocket error:', err);
+                reject(err);
+            };
+        });
     }
     getWebSocketUri(apiUrl) {
         let uri = apiUrl.replace(/http:\/\//g, 'ws://');
@@ -75,13 +79,13 @@ export class WebSocketService {
         }
     }
     async registerBlocks() {
-        if (this.closed)
-            throw new Error('WebSocket is closed.');
+        if (!this.isOpen)
+            throw new Error('WebSocket is not open.');
         this.ws.send(JSON.stringify({ type: 'register', messageType: 'block' }));
     }
     async registerTx(tx) {
-        if (this.closed)
-            throw new Error('WebSocket is closed.');
+        if (!this.isOpen)
+            throw new Error('WebSocket is not open.');
         this.ws.send(JSON.stringify({
             type: 'register',
             messageType: 'tx',
@@ -89,8 +93,8 @@ export class WebSocketService {
         }));
     }
     async listenBlock(actionRegistry, authRegistry) {
-        if (this.closed)
-            throw new Error('WebSocket is closed.');
+        if (!this.isOpen)
+            throw new Error('WebSocket is not open.');
         return new Promise((resolve, reject) => {
             const message = this.pendingBlocks.shift();
             if (!message) {
@@ -120,8 +124,8 @@ export class WebSocketService {
         });
     }
     async listenTx() {
-        if (this.closed)
-            throw new Error('WebSocket is closed.');
+        if (!this.isOpen)
+            throw new Error('WebSocket is not open.');
         return new Promise((resolve, reject) => {
             const message = this.pendingTxs.shift();
             if (!message) {
@@ -142,12 +146,12 @@ export class WebSocketService {
         });
     }
     async close() {
-        if (this.closed)
+        if (!this.isOpen)
             return;
         this.ws.close();
     }
     isClosed() {
-        return this.closed;
+        return !this.isOpen;
     }
 }
 //# sourceMappingURL=websocket.js.map

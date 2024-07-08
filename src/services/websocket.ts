@@ -25,7 +25,7 @@ export class WebSocketService {
   private ws!: CustomWebSocket
   private pendingBlocks: Array<Uint8Array> = []
   private pendingTxs: Array<Uint8Array> = []
-  private closed: boolean = false
+  private isOpen: boolean = false
 
   constructor(config: NodeConfig) {
     this.uri = this.getWebSocketUri(
@@ -36,24 +36,29 @@ export class WebSocketService {
   async connect() {
     await loadWebSocketClient()
     const WebSocketClient = getWebSocketClient()
-    // TODO: get the websocket url from the config
     this.ws = new WebSocketClient(this.uri)
-    this.ws.onopen = () => {
-      console.log('WebSocket connection opened.')
-    }
 
-    this.ws.onmessage = async (event: any) => {
-      await this.handleMessage(event.data)
-    }
+    return new Promise<void>((resolve, reject) => {
+      this.ws.onopen = () => {
+        console.log('WebSocket connection opened.')
+        this.isOpen = true
+        resolve()
+      }
 
-    this.ws.onclose = () => {
-      this.closed = true
-      console.log('WebSocket connection closed.')
-    }
+      this.ws.onmessage = async (event: any) => {
+        await this.handleMessage(event.data)
+      }
 
-    this.ws.onerror = (err: any) => {
-      console.error('WebSocket error:', err)
-    }
+      this.ws.onclose = () => {
+        this.isOpen = false
+        console.log('WebSocket connection closed.')
+      }
+
+      this.ws.onerror = (err: any) => {
+        console.error('WebSocket error:', err)
+        reject(err)
+      }
+    })
   }
 
   private getWebSocketUri(apiUrl: string): string {
@@ -101,12 +106,12 @@ export class WebSocketService {
   }
 
   async registerBlocks() {
-    if (this.closed) throw new Error('WebSocket is closed.')
+    if (!this.isOpen) throw new Error('WebSocket is not open.')
     this.ws.send(JSON.stringify({ type: 'register', messageType: 'block' }))
   }
 
   async registerTx(tx: Transaction) {
-    if (this.closed) throw new Error('WebSocket is closed.')
+    if (!this.isOpen) throw new Error('WebSocket is not open.')
     this.ws.send(
       JSON.stringify({
         type: 'register',
@@ -120,7 +125,7 @@ export class WebSocketService {
     actionRegistry: ActionRegistry,
     authRegistry: AuthRegistry
   ): Promise<[StatefulBlock, Array<Result>, Dimension, Error?]> {
-    if (this.closed) throw new Error('WebSocket is closed.')
+    if (!this.isOpen) throw new Error('WebSocket is not open.')
     return new Promise((resolve, reject) => {
       const message = this.pendingBlocks.shift()
       if (!message) {
@@ -155,7 +160,7 @@ export class WebSocketService {
   }
 
   async listenTx(): Promise<[Id, Error?, Result?, Error?]> {
-    if (this.closed) throw new Error('WebSocket is closed.')
+    if (!this.isOpen) throw new Error('WebSocket is not open.')
     return new Promise((resolve, reject) => {
       const message = this.pendingTxs.shift()
       if (!message) {
@@ -177,11 +182,11 @@ export class WebSocketService {
   }
 
   async close() {
-    if (this.closed) return
+    if (!this.isOpen) return
     this.ws.close()
   }
 
   isClosed(): boolean {
-    return this.closed
+    return !this.isOpen
   }
 }
