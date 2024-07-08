@@ -48243,7 +48243,7 @@ var WebSocketService = class {
       apiUrl
     );
     let uri = apiUrl.replace(/http:\/\//g, "ws://");
-    uri = uri.replace(/https:\/\//g, "wss://");
+    uri = apiUrl.replace(/https:\/\//g, "wss://");
     if (!uri.startsWith("ws")) {
       uri = "ws://" + uri;
     }
@@ -48297,6 +48297,7 @@ var WebSocketService = class {
           console.debug("Sending message:", msg);
           this.conn.send(msg);
         }
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
     } catch (error) {
       console.error("WebSocket write loop error:", error);

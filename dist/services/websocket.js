@@ -90,7 +90,7 @@ export class WebSocketService {
     getWebSocketUri(apiUrl) {
         console.debug('WebSocketService.getWebSocketUri called with apiUrl:', apiUrl);
         let uri = apiUrl.replace(/http:\/\//g, 'ws://');
-        uri = uri.replace(/https:\/\//g, 'wss://');
+        uri = apiUrl.replace(/https:\/\//g, 'wss://');
         if (!uri.startsWith('ws')) {
             uri = 'ws://' + uri;
         }
@@ -146,6 +146,8 @@ export class WebSocketService {
                     console.debug('Sending message:', msg);
                     this.conn.send(msg);
                 }
+                // Throttle the loop to prevent it from running too fast
+                await new Promise((resolve) => setTimeout(resolve, 100));
             }
         }
         catch (error) {
