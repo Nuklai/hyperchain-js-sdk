@@ -47931,15 +47931,11 @@ var MessageBuffer = class {
   }
   async send(msg) {
     await this.withLock(() => {
-      console.log("MessageBuffer.send called with msg:", msg);
       const msgLength = msg.length;
       if (msgLength > this.maxSize) {
         throw new Error("Message too large");
       }
       if (this.pendingSize + msgLength > this.maxSize) {
-        console.log(
-          "MessageBuffer: pendingSize exceeded, clearing pending messages"
-        );
         this.clearPending();
       }
       this.pendingSize += msgLength;
@@ -47951,12 +47947,10 @@ var MessageBuffer = class {
   }
   async clearPending() {
     await this.withLock(() => {
-      console.log("MessageBuffer.clearPending called");
       if (this.pending.length === 0) {
         return;
       }
       const batchMessage = createBatchMessage(this.maxSize, this.pending);
-      console.log("MessageBuffer: batchMessage:", batchMessage);
       this.queue.push(batchMessage);
       this.pending = [];
       this.pendingSize = 0;
@@ -47965,7 +47959,6 @@ var MessageBuffer = class {
   }
   async getQueue() {
     return this.withLock(() => {
-      console.log("MessageBuffer.getQueue called");
       const result = this.queue;
       this.queue = [];
       return result;
@@ -48260,35 +48253,24 @@ var Result = class _Result {
   }
   static fromBytes(codec) {
     const success = codec.unpackBool();
-    console.log("Unpacked success:", success);
     const error = codec.unpackLimitedBytes(MaxInt, false);
-    console.log("Unpacked error:", error);
-    if (codec.getError()) {
-      return [new _Result(false, new Uint8Array(), [], [], 0n), codec.getError()];
-    }
     const numActions = codec.unpackByte();
-    console.log("Unpacked numActions:", numActions);
     const outputs = [];
     for (let i = 0; i < numActions; i++) {
       const numOutputs = codec.unpackByte();
-      console.log("Unpacked numOutputs:", numOutputs);
       const actionOutputs = [];
       for (let j2 = 0; j2 < numOutputs; j2++) {
         const output3 = codec.unpackLimitedBytes(MaxInt, false);
-        console.log("Unpacked output:", output3);
         actionOutputs.push(output3);
       }
       outputs.push(actionOutputs);
     }
     const consumedRaw = codec.unpackFixedBytes(DimensionsLen);
-    console.log("Unpacked consumedRaw:", consumedRaw);
     const [units, err2] = dimensionFromBytes(consumedRaw);
-    console.log("Unpacked units:", units);
     if (err2) {
       return [new _Result(false, new Uint8Array(), [], [], 0n), err2];
     }
     const fee = codec.unpackUint64(true);
-    console.log("Unpacked fee:", fee);
     return [new _Result(success, error, outputs, units, fee), codec.getError()];
   }
   static resultsFromBytes(bytes3) {
@@ -48337,7 +48319,6 @@ var WebSocketService = class {
       this.writeLoop();
     };
     this.conn.onerror = (event) => {
-      console.error("WebSocket error:", event);
       this.err = new Error(`WebSocket error: ${event}`);
       this.close();
     };
@@ -48352,28 +48333,22 @@ var WebSocketService = class {
     return uri;
   }
   async readLoop() {
-    console.log("WebSocketService.readLoop started");
     try {
       while (this.conn.readyState === WebSocket.OPEN) {
         const event = await new Promise(
           (resolve) => this.conn.onmessage = resolve
         );
-        console.log("WebSocket message received:", event);
         const msgBatch = new Uint8Array(await event.data.arrayBuffer());
         if (msgBatch.length === 0) {
-          console.warn("got empty message");
           continue;
         }
-        console.log("msgBatch:", msgBatch);
         const msgs = parseBatchMessage(MaxWriteMessageSize, msgBatch);
         for (const msg of msgs) {
           const mode = msg[0];
           const tmsg = msg.slice(1);
           if (mode === BlockMode) {
-            console.log("Block mode message:", tmsg);
             this.pendingBlocks.push(tmsg);
           } else if (mode === TxMode) {
-            console.log("Tx mode message:", tmsg);
             this.pendingTxs.push(tmsg);
           } else {
             console.warn(`unexpected message mode: ${mode}`);
@@ -48381,37 +48356,29 @@ var WebSocketService = class {
         }
       }
     } catch (error) {
-      console.error("WebSocket read loop error:", error);
       this.err = error;
       this.close();
     } finally {
       this.readStopped = true;
-      console.log("WebSocketService.readLoop stopped");
     }
   }
   async writeLoop() {
-    console.log("WebSocketService.writeLoop started");
     try {
       while (this.conn.readyState === WebSocket.OPEN) {
         if (await this.mb.hasMessages()) {
           const queue = await this.mb.getQueue();
           for (const msg of queue) {
-            console.log("Sending message:", msg);
             this.conn.send(msg);
           }
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
     } catch (error) {
-      console.error("WebSocket write loop error:", error);
       this.err = error;
       this.close();
-    } finally {
-      console.log("WebSocketService.writeLoop stopped");
     }
   }
   async registerBlocks() {
-    console.log("WebSocketService.registerBlocks called");
     if (this.closed) {
       throw new Error("Connection is closed");
     }
@@ -48422,7 +48389,6 @@ var WebSocketService = class {
     while (!this.readStopped) {
       const msg = this.pendingBlocks.shift();
       if (msg) {
-        console.log("Block message received:", msg);
         return this.unpackBlockMessage(msg, actionRegistry, authRegistry);
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -48448,7 +48414,6 @@ var WebSocketService = class {
     while (!this.readStopped) {
       const msg = this.pendingTxs.shift();
       if (msg) {
-        console.log("Transaction message received:", msg);
         return this.unpackTxMessage(msg);
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -48465,7 +48430,6 @@ var WebSocketService = class {
     }
   }
   unpackBlockMessage(msg, actionRegistry, authRegistry) {
-    console.log("WebSocketService.unpackBlockMessage called with message:", msg);
     let codec = Codec.newReader(msg, MaxInt);
     const blkMessage = codec.unpackBytes(true);
     const [block, c] = StatefulBlock.fromBytes(
@@ -48474,51 +48438,37 @@ var WebSocketService = class {
       authRegistry
     );
     if (c.getError()) {
-      console.error("Error unpacking block:", c.getError());
       return Promise.reject(c.getError());
     }
     codec = c;
     const resultsMessage = codec.unpackBytes(true);
     const [results, errResults] = Result.resultsFromBytes(resultsMessage);
     if (errResults) {
-      console.error("Error unpacking results:", errResults);
       return Promise.reject(errResults);
     }
     const pricesMessage = codec.unpackFixedBytes(DimensionsLen);
     const [prices, errMessage] = dimensionFromBytes(pricesMessage);
     if (errMessage) {
-      console.error("Error unpacking prices:", errMessage);
       return Promise.reject(errMessage);
     }
     if (!codec.empty()) {
       return Promise.reject(new Error("Invalid object"));
     }
-    console.log("Block message unpacked successfully");
     return Promise.resolve([block, results, prices]);
   }
   async unpackTxMessage(msg) {
-    console.log("WebSocketService.unpackTxMessage called with message:", msg);
     const codec = Codec.newReader(msg, MaxInt);
-    console.log("Initial codec state:", codec);
     const txId = codec.unpackID(true);
-    console.log("Unpacked txId:", txId);
     const hasError = codec.unpackBool();
-    console.log("Unpacked hasError:", hasError);
     if (hasError) {
       const error = new Error(codec.unpackString(true));
-      console.error("Transaction error unpacked:", error);
       return Promise.resolve([txId, error, void 0, void 0]);
     }
-    console.log("Unpacking result...");
     const [result, err2] = Result.fromBytes(codec);
     if (err2) {
-      console.error("Error unpacking transaction result:", err2);
       return Promise.reject(err2);
     }
     const finalError = codec.getError();
-    console.log("Final codec state:", codec);
-    console.log("Unpacked final error (if any):", finalError);
-    console.log("Transaction message unpacked successfully");
     return Promise.resolve([txId, void 0, result, finalError]);
   }
 };

@@ -45,7 +45,6 @@ export class WebSocketService {
     }
 
     this.conn.onerror = (event) => {
-      console.error('WebSocket error:', event)
       this.err = new Error(`WebSocket error: ${event}`)
       this.close()
     }
@@ -62,30 +61,23 @@ export class WebSocketService {
   }
 
   private async readLoop() {
-    console.log('WebSocketService.readLoop started')
     try {
       while (this.conn.readyState === WebSocket.OPEN) {
         const event = await new Promise<MessageEvent>(
           (resolve) => (this.conn.onmessage = resolve)
         )
-        console.log('WebSocket message received:', event)
         const msgBatch = new Uint8Array(await event.data.arrayBuffer()) // Adjusted for data type
         if (msgBatch.length === 0) {
-          console.warn('got empty message')
           continue
         }
-
-        console.log('msgBatch:', msgBatch)
 
         const msgs = parseBatchMessage(MaxWriteMessageSize, msgBatch)
         for (const msg of msgs) {
           const mode = msg[0]
           const tmsg = msg.slice(1)
           if (mode === BlockMode) {
-            console.log('Block mode message:', tmsg)
             this.pendingBlocks.push(tmsg)
           } else if (mode === TxMode) {
-            console.log('Tx mode message:', tmsg)
             this.pendingTxs.push(tmsg)
           } else {
             console.warn(`unexpected message mode: ${mode}`)
@@ -93,23 +85,19 @@ export class WebSocketService {
         }
       }
     } catch (error: any) {
-      console.error('WebSocket read loop error:', error)
       this.err = error
       this.close()
     } finally {
       this.readStopped = true
-      console.log('WebSocketService.readLoop stopped')
     }
   }
 
   private async writeLoop() {
-    console.log('WebSocketService.writeLoop started')
     try {
       while (this.conn.readyState === WebSocket.OPEN) {
         if (await this.mb.hasMessages()) {
           const queue = await this.mb.getQueue()
           for (const msg of queue) {
-            console.log('Sending message:', msg)
             this.conn.send(msg)
           }
         }
@@ -117,16 +105,12 @@ export class WebSocketService {
         await new Promise((resolve) => setTimeout(resolve, 100))
       }
     } catch (error: any) {
-      console.error('WebSocket write loop error:', error)
       this.err = error
       this.close()
-    } finally {
-      console.log('WebSocketService.writeLoop stopped')
     }
   }
 
   async registerBlocks() {
-    console.log('WebSocketService.registerBlocks called')
     if (this.closed) {
       throw new Error('Connection is closed')
     }
@@ -141,7 +125,6 @@ export class WebSocketService {
     while (!this.readStopped) {
       const msg = this.pendingBlocks.shift()
       if (msg) {
-        console.log('Block message received:', msg)
         return this.unpackBlockMessage(msg, actionRegistry, authRegistry)
       }
       await new Promise((resolve) => setTimeout(resolve, 100))
@@ -169,7 +152,6 @@ export class WebSocketService {
     while (!this.readStopped) {
       const msg = this.pendingTxs.shift()
       if (msg) {
-        console.log('Transaction message received:', msg)
         return this.unpackTxMessage(msg)
       }
       await new Promise((resolve) => setTimeout(resolve, 100))
@@ -192,7 +174,6 @@ export class WebSocketService {
     actionRegistry: ActionRegistry,
     authRegistry: AuthRegistry
   ): Promise<[StatefulBlock, Array<Result>, Dimension, Error?]> {
-    console.log('WebSocketService.unpackBlockMessage called with message:', msg)
     let codec = Codec.newReader(msg, MaxInt)
     const blkMessage = codec.unpackBytes(true)
     const [block, c] = StatefulBlock.fromBytes(
@@ -201,60 +182,40 @@ export class WebSocketService {
       authRegistry
     )
     if (c.getError()) {
-      console.error('Error unpacking block:', c.getError())
       return Promise.reject(c.getError())
     }
     codec = c
     const resultsMessage = codec.unpackBytes(true)
     const [results, errResults] = Result.resultsFromBytes(resultsMessage)
     if (errResults) {
-      console.error('Error unpacking results:', errResults)
       return Promise.reject(errResults)
     }
     const pricesMessage = codec.unpackFixedBytes(DimensionsLen)
     const [prices, errMessage] = dimensionFromBytes(pricesMessage)
     if (errMessage) {
-      console.error('Error unpacking prices:', errMessage)
       return Promise.reject(errMessage)
     }
     if (!codec.empty()) {
       return Promise.reject(new Error('Invalid object'))
     }
-    console.log('Block message unpacked successfully')
     return Promise.resolve([block, results, prices])
   }
 
   private async unpackTxMessage(
     msg: Uint8Array
   ): Promise<[Id, Error?, Result?, Error?]> {
-    console.log('WebSocketService.unpackTxMessage called with message:', msg)
     const codec = Codec.newReader(msg, MaxInt)
-
-    console.log('Initial codec state:', codec)
     const txId = codec.unpackID(true)
-    console.log('Unpacked txId:', txId)
-
     const hasError = codec.unpackBool()
-    console.log('Unpacked hasError:', hasError)
-
     if (hasError) {
       const error = new Error(codec.unpackString(true))
-      console.error('Transaction error unpacked:', error)
       return Promise.resolve([txId, error, undefined, undefined])
     }
-
-    console.log('Unpacking result...')
     const [result, err] = Result.fromBytes(codec)
     if (err) {
-      console.error('Error unpacking transaction result:', err)
       return Promise.reject(err)
     }
-
     const finalError = codec.getError()
-    console.log('Final codec state:', codec)
-    console.log('Unpacked final error (if any):', finalError)
-
-    console.log('Transaction message unpacked successfully')
     return Promise.resolve([txId, undefined, result, finalError])
   }
 }

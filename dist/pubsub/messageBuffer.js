@@ -35,13 +35,11 @@ export class MessageBuffer {
     }
     async send(msg) {
         await this.withLock(() => {
-            console.log('MessageBuffer.send called with msg:', msg);
             const msgLength = msg.length;
             if (msgLength > this.maxSize) {
                 throw new Error('Message too large');
             }
             if (this.pendingSize + msgLength > this.maxSize) {
-                console.log('MessageBuffer: pendingSize exceeded, clearing pending messages');
                 this.clearPending();
             }
             this.pendingSize += msgLength;
@@ -53,12 +51,10 @@ export class MessageBuffer {
     }
     async clearPending() {
         await this.withLock(() => {
-            console.log('MessageBuffer.clearPending called');
             if (this.pending.length === 0) {
                 return;
             }
             const batchMessage = createBatchMessage(this.maxSize, this.pending);
-            console.log('MessageBuffer: batchMessage:', batchMessage);
             this.queue.push(batchMessage);
             this.pending = [];
             this.pendingSize = 0;
@@ -67,7 +63,6 @@ export class MessageBuffer {
     }
     async getQueue() {
         return this.withLock(() => {
-            console.log('MessageBuffer.getQueue called');
             const result = this.queue;
             this.queue = [];
             return result;

@@ -39,7 +39,6 @@ export class MessageBuffer {
 
   async send(msg: Uint8Array) {
     await this.withLock(() => {
-      console.log('MessageBuffer.send called with msg:', msg)
       const msgLength = msg.length
 
       if (msgLength > this.maxSize) {
@@ -47,9 +46,6 @@ export class MessageBuffer {
       }
 
       if (this.pendingSize + msgLength > this.maxSize) {
-        console.log(
-          'MessageBuffer: pendingSize exceeded, clearing pending messages'
-        )
         this.clearPending()
       }
 
@@ -64,13 +60,11 @@ export class MessageBuffer {
 
   async clearPending() {
     await this.withLock(() => {
-      console.log('MessageBuffer.clearPending called')
       if (this.pending.length === 0) {
         return
       }
 
       const batchMessage = createBatchMessage(this.maxSize, this.pending)
-      console.log('MessageBuffer: batchMessage:', batchMessage)
       this.queue.push(batchMessage)
       this.pending = []
       this.pendingSize = 0
@@ -81,7 +75,6 @@ export class MessageBuffer {
 
   async getQueue(): Promise<Array<Uint8Array>> {
     return this.withLock(() => {
-      console.log('MessageBuffer.getQueue called')
       const result = this.queue
       this.queue = []
       return result
