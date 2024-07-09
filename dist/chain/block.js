@@ -74,7 +74,7 @@ export class StatefulBlock {
         for (let i = 0; i < txCount; i++) {
             const [tx, c] = Transaction.fromBytesCodec(codec, actionRegistry, authRegistry);
             if (c.getError()) {
-                return [block, c];
+                return [block, c.getError()];
             }
             codec = c;
             block.txs.push(tx);
@@ -87,7 +87,7 @@ export class StatefulBlock {
         if (!codec.empty()) {
             throw new Error(`Invalid object: remaining=${bytes.length - codec.getOffset()}`);
         }
-        return [block, codec];
+        return [block, codec.getError()];
     }
 }
 //# sourceMappingURL=block.js.map

@@ -1,5 +1,4 @@
 import { Id } from "@avalabs/avalanchejs";
-import { Codec } from "../codec/codec";
 import { ActionRegistry, AuthRegistry } from "./dependencies";
 import { Transaction } from "./transaction";
 export declare class StatefulBlock {
@@ -14,5 +13,5 @@ export declare class StatefulBlock {
     getSize(): number;
     id(): Promise<Id>;
     toBytes(): [Uint8Array, Error?];
-    static fromBytes(bytes: Uint8Array, actionRegistry: ActionRegistry, authRegistry: AuthRegistry): [StatefulBlock, Codec];
+    static fromBytes(bytes: Uint8Array, actionRegistry: ActionRegistry, authRegistry: AuthRegistry): [StatefulBlock, Error?];
 }

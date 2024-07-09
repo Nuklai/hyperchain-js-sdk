@@ -95,7 +95,7 @@ export class StatefulBlock {
     bytes: Uint8Array,
     actionRegistry: ActionRegistry,
     authRegistry: AuthRegistry
-  ): [StatefulBlock, Codec] {
+  ): [StatefulBlock, Error?] {
     const block: StatefulBlock = new StatefulBlock(
       EMPTY_ID,
       BigInt(0),
@@ -122,7 +122,7 @@ export class StatefulBlock {
         authRegistry
       );
       if (c.getError()) {
-        return [block, c];
+        return [block, c.getError()];
       }
       codec = c;
       block.txs.push(tx);
@@ -142,6 +142,6 @@ export class StatefulBlock {
       );
     }
 
-    return [block, codec];
+    return [block, codec.getError()];
   }
 }

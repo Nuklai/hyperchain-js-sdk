@@ -146,7 +146,6 @@ export class WebSocketService {
     console.log("WebSocketService.listenBlock called");
     while (!this.readStopped) {
       const msg = this.pendingBlocks.shift();
-      console.log("message received: ", msg);
       if (msg) {
         return this.unpackBlockMessage(msg, actionRegistry, authRegistry);
       }
@@ -214,31 +213,24 @@ export class WebSocketService {
   }> {
     let codec = Codec.newReader(msg, MaxInt);
     const blkMessage = codec.unpackBytes(true);
-    const [block, c] = StatefulBlock.fromBytes(
+    const [block, err] = StatefulBlock.fromBytes(
       blkMessage,
       actionRegistry,
       authRegistry
     );
-    if (c.getError()) {
-      return Promise.reject(c.getError());
+    if (err) {
+      return Promise.reject(err);
     }
-    console.log("codec bytes: ", codec.toBytes());
     const resultsMessage = codec.unpackBytes(true);
-    console.log("Unpacked results message:", resultsMessage);
     const [results, errResults] = Result.resultsFromBytes(resultsMessage);
-    console.log("results: ", results);
-    console.log("errResults: ", errResults);
     if (errResults) {
       return Promise.reject(errResults);
     }
-    console.log("results: ", JSON.stringify(results, null, 2));
     const pricesMessage = codec.unpackFixedBytes(DimensionsLen);
-    console.log("pricesMessage: ", pricesMessage);
     const [prices, errMessage] = dimensionFromBytes(pricesMessage);
     if (errMessage) {
       return Promise.reject(errMessage);
     }
-    console.log("prices: ", prices);
     if (!codec.empty()) {
       return Promise.reject(new Error("Invalid object"));
     }

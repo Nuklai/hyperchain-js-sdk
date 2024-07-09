@@ -47658,7 +47658,7 @@ var StatefulBlock = class _StatefulBlock {
         authRegistry
       );
       if (c.getError()) {
-        return [block, c];
+        return [block, c.getError()];
       }
       codec = c;
       block.txs.push(tx);
@@ -47675,7 +47675,7 @@ var StatefulBlock = class _StatefulBlock {
         `Invalid object: remaining=${bytes3.length - codec.getOffset()}`
       );
     }
-    return [block, codec];
+    return [block, codec.getError()];
   }
 };
 
@@ -48404,7 +48404,6 @@ var WebSocketService = class {
     console.log("WebSocketService.listenBlock called");
     while (!this.readStopped) {
       const msg = this.pendingBlocks.shift();
-      console.log("message received: ", msg);
       if (msg) {
         return this.unpackBlockMessage(msg, actionRegistry, authRegistry);
       }
@@ -48452,31 +48451,24 @@ var WebSocketService = class {
   unpackBlockMessage(msg, actionRegistry, authRegistry) {
     let codec = Codec.newReader(msg, MaxInt);
     const blkMessage = codec.unpackBytes(true);
-    const [block, c] = StatefulBlock.fromBytes(
+    const [block, err2] = StatefulBlock.fromBytes(
       blkMessage,
       actionRegistry,
       authRegistry
     );
-    if (c.getError()) {
-      return Promise.reject(c.getError());
+    if (err2) {
+      return Promise.reject(err2);
     }
-    console.log("codec bytes: ", codec.toBytes());
     const resultsMessage = codec.unpackBytes(true);
-    console.log("Unpacked results message:", resultsMessage);
     const [results, errResults] = Result.resultsFromBytes(resultsMessage);
-    console.log("results: ", results);
-    console.log("errResults: ", errResults);
     if (errResults) {
       return Promise.reject(errResults);
     }
-    console.log("results: ", JSON.stringify(results, null, 2));
     const pricesMessage = codec.unpackFixedBytes(DimensionsLen);
-    console.log("pricesMessage: ", pricesMessage);
     const [prices, errMessage] = dimensionFromBytes(pricesMessage);
     if (errMessage) {
       return Promise.reject(errMessage);
     }
-    console.log("prices: ", prices);
     if (!codec.empty()) {
       return Promise.reject(new Error("Invalid object"));
     }
