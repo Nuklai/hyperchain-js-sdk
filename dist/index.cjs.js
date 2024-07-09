@@ -32828,7 +32828,6 @@ var Codec = class _Codec {
   }
   unpackBytes(required) {
     const size = this.unpackInt(true);
-    if (this.error) return new Uint8Array();
     const bytes3 = this.unpackFixedBytes(size);
     if (required && bytes3.length === 0) {
       this.addError(new Error("Bytes field is not populated"));
@@ -32837,7 +32836,9 @@ var Codec = class _Codec {
   }
   unpackLimitedBytes(limit) {
     const size = this.unpackInt(true);
-    if (this.error || size > limit) {
+    console.log("Unpacked size:", size);
+    console.log("Limit:", limit);
+    if (size > limit) {
       this.error = errOversized;
       return new Uint8Array();
     }
@@ -37639,10 +37640,10 @@ var Result = class _Result {
     const success = codec.unpackBool();
     console.log("Unpacked success:", success);
     const error = codec.unpackLimitedBytes(MaxInt);
+    console.log("Unpacked error:", error);
     if (codec.getError()) {
       return [new _Result(false, new Uint8Array(), [], [], 0n), codec.getError()];
     }
-    console.log("Unpacked error:", error);
     const numActions = codec.unpackByte();
     console.log("Unpacked numActions:", numActions);
     const outputs = [];

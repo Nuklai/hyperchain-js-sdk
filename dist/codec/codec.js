@@ -151,8 +151,6 @@ export class Codec {
     }
     unpackBytes(required) {
         const size = this.unpackInt(true);
-        if (this.error)
-            return new Uint8Array();
         const bytes = this.unpackFixedBytes(size);
         if (required && bytes.length === 0) {
             this.addError(new Error('Bytes field is not populated'));
@@ -161,8 +159,9 @@ export class Codec {
     }
     unpackLimitedBytes(limit) {
         const size = this.unpackInt(true);
-        if (this.error || size > limit) {
-            // Check for error early
+        console.log('Unpacked size:', size);
+        console.log('Limit:', limit);
+        if (size > limit) {
             this.error = errOversized;
             return new Uint8Array();
         }
