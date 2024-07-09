@@ -80,7 +80,7 @@ export class Result {
   static fromBytes(codec: Codec): [Result, Error?] {
     const success = codec.unpackBool()
     console.log('Unpacked success:', success)
-    const error = codec.unpackLimitedBytes(MaxInt)
+    const error = codec.unpackLimitedBytes(MaxInt, false)
     console.log('Unpacked error:', error)
     if (codec.getError()) {
       return [new Result(false, new Uint8Array(), [], [], 0n), codec.getError()]
@@ -93,7 +93,7 @@ export class Result {
       console.log('Unpacked numOutputs:', numOutputs)
       const actionOutputs = []
       for (let j = 0; j < numOutputs; j++) {
-        const output = codec.unpackLimitedBytes(MaxInt)
+        const output = codec.unpackLimitedBytes(MaxInt, false)
         console.log('Unpacked output:', output)
         actionOutputs.push(output)
       }

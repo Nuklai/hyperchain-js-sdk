@@ -47,7 +47,7 @@ export class Transfer {
         const asset = codec.unpackID(false);
         const value = codec.unpackUint64(true);
         // Ensure the memo is unpacked as fixed bytes of MAX_MEMO_SIZE
-        const memoBytes = codec.unpackLimitedBytes(MAX_MEMO_SIZE);
+        const memoBytes = codec.unpackLimitedBytes(MAX_MEMO_SIZE, false);
         const memo = new TextDecoder().decode(memoBytes);
         const action = new Transfer(to.toString(), asset.toString(), value, memo);
         return [action, codec.getError()];
@@ -58,7 +58,7 @@ export class Transfer {
         const asset = codec.unpackID(false);
         const value = codec.unpackUint64(true);
         // Ensure the memo is unpacked as fixed bytes of MAX_MEMO_SIZE
-        const memoBytes = codec.unpackLimitedBytes(MAX_MEMO_SIZE);
+        const memoBytes = codec.unpackLimitedBytes(MAX_MEMO_SIZE, false);
         const memo = new TextDecoder().decode(memoBytes);
         const action = new Transfer(to.toString(), asset.toString(), value, memo);
         return [action, codec];

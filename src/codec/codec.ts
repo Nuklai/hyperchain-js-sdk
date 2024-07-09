@@ -23,6 +23,7 @@ const errNegativeOffset = new Error('negative offset')
 const errInvalidInput = new Error('input does not match expected format')
 const errBadBool = new Error('unexpected value when unpacking bool')
 const errOversized = new Error('size is larger than limit')
+const errNotPopulated = new Error('field is not populated')
 
 export class Codec {
   private buffer: Uint8Array
@@ -124,7 +125,7 @@ export class Codec {
     this.offset += INT_LEN
 
     if (required && value === 0) {
-      this.addError(new Error('Int field is not populated'))
+      this.addError(errNotPopulated)
     }
     return value
   }
@@ -185,7 +186,7 @@ export class Codec {
   }
 
   unpackBytes(required: boolean): Uint8Array {
-    const size = this.unpackInt(true)
+    const size = this.unpackInt(required)
     const bytes = this.unpackFixedBytes(size)
     if (required && bytes.length === 0) {
       this.addError(new Error('Bytes field is not populated'))
@@ -193,8 +194,8 @@ export class Codec {
     return bytes
   }
 
-  unpackLimitedBytes(limit: number): Uint8Array {
-    const size = this.unpackInt(true)
+  unpackLimitedBytes(limit: number, required: boolean): Uint8Array {
+    const size = this.unpackInt(required)
     console.log('Unpacked size:', size)
     console.log('Limit:', limit)
     if (size > limit) {

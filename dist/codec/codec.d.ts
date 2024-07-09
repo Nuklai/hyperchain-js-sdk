@@ -24,7 +24,7 @@ export declare class Codec {
     unpackFixedBytes(size: number): Uint8Array;
     packBytes(bytes: Uint8Array): void;
     unpackBytes(required: boolean): Uint8Array;
-    unpackLimitedBytes(limit: number): Uint8Array;
+    unpackLimitedBytes(limit: number, required: boolean): Uint8Array;
     packStr(value: string): void;
     unpackStr(required: boolean): string;
     unpackLimitedStr(limit: number): string;

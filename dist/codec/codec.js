@@ -9,6 +9,7 @@ const errNegativeOffset = new Error('negative offset');
 const errInvalidInput = new Error('input does not match expected format');
 const errBadBool = new Error('unexpected value when unpacking bool');
 const errOversized = new Error('size is larger than limit');
+const errNotPopulated = new Error('field is not populated');
 export class Codec {
     buffer;
     offset;
@@ -99,7 +100,7 @@ export class Codec {
         const value = new DataView(this.buffer.buffer).getUint32(this.offset, false);
         this.offset += INT_LEN;
         if (required && value === 0) {
-            this.addError(new Error('Int field is not populated'));
+            this.addError(errNotPopulated);
         }
         return value;
     }
@@ -150,15 +151,15 @@ export class Codec {
         this.packFixedBytes(bytes);
     }
     unpackBytes(required) {
-        const size = this.unpackInt(true);
+        const size = this.unpackInt(required);
         const bytes = this.unpackFixedBytes(size);
         if (required && bytes.length === 0) {
             this.addError(new Error('Bytes field is not populated'));
         }
         return bytes;
     }
-    unpackLimitedBytes(limit) {
-        const size = this.unpackInt(true);
+    unpackLimitedBytes(limit, required) {
+        const size = this.unpackInt(required);
         console.log('Unpacked size:', size);
         console.log('Limit:', limit);
         if (size > limit) {

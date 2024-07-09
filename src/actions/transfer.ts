@@ -1,8 +1,8 @@
 // Copyright (C) 2024, Nuklai. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-import _ from 'lodash'
 import { Id } from '@avalabs/avalanchejs'
+import _ from 'lodash'
 import { Codec } from '../codec/codec'
 import { ADDRESS_LEN, ID_LEN, INT_LEN, UINT64_LEN } from '../constants/consts'
 import {
@@ -66,7 +66,7 @@ export class Transfer implements Action {
     const value = codec.unpackUint64(true)
 
     // Ensure the memo is unpacked as fixed bytes of MAX_MEMO_SIZE
-    const memoBytes = codec.unpackLimitedBytes(MAX_MEMO_SIZE)
+    const memoBytes = codec.unpackLimitedBytes(MAX_MEMO_SIZE, false)
     const memo = new TextDecoder().decode(memoBytes)
 
     const action = new Transfer(to.toString(), asset.toString(), value, memo)
@@ -80,7 +80,7 @@ export class Transfer implements Action {
     const value = codec.unpackUint64(true)
 
     // Ensure the memo is unpacked as fixed bytes of MAX_MEMO_SIZE
-    const memoBytes = codec.unpackLimitedBytes(MAX_MEMO_SIZE)
+    const memoBytes = codec.unpackLimitedBytes(MAX_MEMO_SIZE, false)
     const memo = new TextDecoder().decode(memoBytes)
 
     const action = new Transfer(to.toString(), asset.toString(), value, memo)

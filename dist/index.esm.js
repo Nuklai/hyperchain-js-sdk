@@ -43319,6 +43319,7 @@ var errNegativeOffset = new Error("negative offset");
 var errInvalidInput = new Error("input does not match expected format");
 var errBadBool = new Error("unexpected value when unpacking bool");
 var errOversized = new Error("size is larger than limit");
+var errNotPopulated = new Error("field is not populated");
 var Codec = class _Codec {
   buffer;
   offset;
@@ -43401,7 +43402,7 @@ var Codec = class _Codec {
     const value = new DataView(this.buffer.buffer).getUint32(this.offset, false);
     this.offset += INT_LEN;
     if (required && value === 0) {
-      this.addError(new Error("Int field is not populated"));
+      this.addError(errNotPopulated);
     }
     return value;
   }
@@ -43449,15 +43450,15 @@ var Codec = class _Codec {
     this.packFixedBytes(bytes3);
   }
   unpackBytes(required) {
-    const size = this.unpackInt(true);
+    const size = this.unpackInt(required);
     const bytes3 = this.unpackFixedBytes(size);
     if (required && bytes3.length === 0) {
       this.addError(new Error("Bytes field is not populated"));
     }
     return bytes3;
   }
-  unpackLimitedBytes(limit) {
-    const size = this.unpackInt(true);
+  unpackLimitedBytes(limit, required) {
+    const size = this.unpackInt(required);
     console.log("Unpacked size:", size);
     console.log("Limit:", limit);
     if (size > limit) {
@@ -43602,7 +43603,7 @@ var Transfer = class _Transfer {
     const to2 = codec.unpackAddress();
     const asset = codec.unpackID(false);
     const value = codec.unpackUint64(true);
-    const memoBytes = codec.unpackLimitedBytes(MAX_MEMO_SIZE);
+    const memoBytes = codec.unpackLimitedBytes(MAX_MEMO_SIZE, false);
     const memo = new TextDecoder().decode(memoBytes);
     const action = new _Transfer(to2.toString(), asset.toString(), value, memo);
     return [action, codec.getError()];
@@ -43612,7 +43613,7 @@ var Transfer = class _Transfer {
     const to2 = codec.unpackAddress();
     const asset = codec.unpackID(false);
     const value = codec.unpackUint64(true);
-    const memoBytes = codec.unpackLimitedBytes(MAX_MEMO_SIZE);
+    const memoBytes = codec.unpackLimitedBytes(MAX_MEMO_SIZE, false);
     const memo = new TextDecoder().decode(memoBytes);
     const action = new _Transfer(to2.toString(), asset.toString(), value, memo);
     return [action, codec];
@@ -48260,7 +48261,7 @@ var Result = class _Result {
   static fromBytes(codec) {
     const success = codec.unpackBool();
     console.log("Unpacked success:", success);
-    const error = codec.unpackLimitedBytes(MaxInt);
+    const error = codec.unpackLimitedBytes(MaxInt, false);
     console.log("Unpacked error:", error);
     if (codec.getError()) {
       return [new _Result(false, new Uint8Array(), [], [], 0n), codec.getError()];
@@ -48273,7 +48274,7 @@ var Result = class _Result {
       console.log("Unpacked numOutputs:", numOutputs);
       const actionOutputs = [];
       for (let j2 = 0; j2 < numOutputs; j2++) {
-        const output3 = codec.unpackLimitedBytes(MaxInt);
+        const output3 = codec.unpackLimitedBytes(MaxInt, false);
         console.log("Unpacked output:", output3);
         actionOutputs.push(output3);
       }
