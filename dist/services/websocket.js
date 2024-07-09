@@ -173,9 +173,7 @@ export class WebSocketService {
         if (c.getError()) {
             return Promise.reject(c.getError());
         }
-        console.log("codec bytes before: ", codec.toBytes());
-        codec = c;
-        console.log("codec bytes after: ", codec.toBytes());
+        console.log("codec bytes: ", codec.toBytes());
         const resultsMessage = codec.unpackBytes(true);
         console.log("Unpacked results message:", resultsMessage);
         const [results, errResults] = Result.resultsFromBytes(resultsMessage);
