@@ -48321,7 +48321,7 @@ var WebSocketService = class {
     );
     this.mb = new MessageBuffer(NETWORK_SIZE_LIMIT, 1e3 * 10);
   }
-  async connect() {
+  connect() {
     console.log("WebSocketService.connect called, connecting to:", this.uri);
     this.conn = new WebSocket(this.uri);
     this.conn.onopen = () => {
@@ -48402,6 +48402,7 @@ var WebSocketService = class {
       if (msg) {
         return this.unpackBlockMessage(msg, actionRegistry, authRegistry);
       }
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
     throw this.err;
   }
@@ -48426,6 +48427,7 @@ var WebSocketService = class {
       if (msg) {
         return this.unpackTxMessage(msg);
       }
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
     throw this.err;
   }

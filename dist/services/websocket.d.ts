@@ -16,7 +16,7 @@ export declare class WebSocketService {
     private closed;
     private err;
     constructor(config: NodeConfig);
-    connect(): Promise<void>;
+    connect(): void;
     private getWebSocketUri;
     private readLoop;
     private writeLoop;

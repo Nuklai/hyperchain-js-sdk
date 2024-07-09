@@ -35,7 +35,7 @@ export class WebSocketService {
     this.mb = new MessageBuffer(NETWORK_SIZE_LIMIT, 1000 * 10) // 10 second timeout
   }
 
-  async connect() {
+  connect() {
     console.log('WebSocketService.connect called, connecting to:', this.uri)
     this.conn = new WebSocket(this.uri)
     this.conn.onopen = () => {
@@ -132,6 +132,8 @@ export class WebSocketService {
       if (msg) {
         return this.unpackBlockMessage(msg, actionRegistry, authRegistry)
       }
+      // Throttle the loop to prevent it from running too fast
+      await new Promise((resolve) => setTimeout(resolve, 100))
     }
     throw this.err
   }
@@ -163,6 +165,8 @@ export class WebSocketService {
       if (msg) {
         return this.unpackTxMessage(msg)
       }
+      // Throttle the loop to prevent it from running too fast
+      await new Promise((resolve) => setTimeout(resolve, 100))
     }
     throw this.err
   }
