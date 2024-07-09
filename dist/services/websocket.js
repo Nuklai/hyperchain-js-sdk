@@ -191,23 +191,31 @@ export class WebSocketService {
         console.log('Block message unpacked successfully');
         return Promise.resolve([block, results, prices]);
     }
-    unpackTxMessage(msg) {
+    async unpackTxMessage(msg) {
         console.log('WebSocketService.unpackTxMessage called with message:', msg);
         const codec = Codec.newReader(msg, MaxInt);
+        console.log('Initial codec state:', codec);
         const txId = codec.unpackID(true);
+        console.log('Unpacked txId:', txId);
         const hasError = codec.unpackBool();
+        console.log('Unpacked hasError:', hasError);
         if (hasError) {
             const error = new Error(codec.unpackString(true));
             console.error('Transaction error unpacked:', error);
             return Promise.resolve([txId, error, undefined, undefined]);
         }
+        console.log('Unpacking result...');
         const [result, err] = Result.fromBytes(codec);
+        console.log('Unpacked result:', result);
         if (err) {
             console.error('Error unpacking transaction result:', err);
             return Promise.reject(err);
         }
+        const finalError = codec.getError();
+        console.log('Final codec state:', codec);
+        console.log('Unpacked final error (if any):', finalError);
         console.log('Transaction message unpacked successfully');
-        return Promise.resolve([txId, undefined, result, codec.getError()]);
+        return Promise.resolve([txId, undefined, result, finalError]);
     }
 }
 //# sourceMappingURL=websocket.js.map

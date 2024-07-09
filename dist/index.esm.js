@@ -48483,23 +48483,31 @@ var WebSocketService = class {
     console.log("Block message unpacked successfully");
     return Promise.resolve([block, results, prices]);
   }
-  unpackTxMessage(msg) {
+  async unpackTxMessage(msg) {
     console.log("WebSocketService.unpackTxMessage called with message:", msg);
     const codec = Codec.newReader(msg, MaxInt);
+    console.log("Initial codec state:", codec);
     const txId = codec.unpackID(true);
+    console.log("Unpacked txId:", txId);
     const hasError = codec.unpackBool();
+    console.log("Unpacked hasError:", hasError);
     if (hasError) {
       const error = new Error(codec.unpackString(true));
       console.error("Transaction error unpacked:", error);
       return Promise.resolve([txId, error, void 0, void 0]);
     }
+    console.log("Unpacking result...");
     const [result, err2] = Result.fromBytes(codec);
+    console.log("Unpacked result:", result);
     if (err2) {
       console.error("Error unpacking transaction result:", err2);
       return Promise.reject(err2);
     }
+    const finalError = codec.getError();
+    console.log("Final codec state:", codec);
+    console.log("Unpacked final error (if any):", finalError);
     console.log("Transaction message unpacked successfully");
-    return Promise.resolve([txId, void 0, result, codec.getError()]);
+    return Promise.resolve([txId, void 0, result, finalError]);
   }
 };
 
