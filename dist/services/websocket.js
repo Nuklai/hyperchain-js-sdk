@@ -22,7 +22,7 @@ export class WebSocketService {
         this.uri = this.getWebSocketUri(config.baseApiUrl + `/ext/bc/${config.blockchainId}/${WEBSOCKET_ENDPOINT}`);
         this.mb = new MessageBuffer(NETWORK_SIZE_LIMIT, 1000 * 10); // 10 second timeout
     }
-    connect() {
+    async connect() {
         console.log('WebSocketService.connect called, connecting to:', this.uri);
         this.conn = new WebSocket(this.uri);
         this.conn.onopen = () => {
@@ -41,7 +41,7 @@ export class WebSocketService {
     }
     getWebSocketUri(apiUrl) {
         let uri = apiUrl.replace(/http:\/\//g, 'ws://');
-        uri = apiUrl.replace(/https:\/\//g, 'wss://');
+        uri = uri.replace(/https:\/\//g, 'wss://');
         if (!uri.startsWith('ws')) {
             uri = 'ws://' + uri;
         }
