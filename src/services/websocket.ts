@@ -1,14 +1,18 @@
 import { Id } from '@avalabs/avalanchejs'
-import { ActionRegistry, AuthRegistry } from 'chain/dependencies'
 import { StatefulBlock } from '../chain/block'
+import { ActionRegistry, AuthRegistry } from '../chain/dependencies'
 import { Dimension, DimensionsLen, dimensionFromBytes } from '../chain/fees'
 import { Result } from '../chain/result'
 import { Transaction } from '../chain/transaction'
 import { Codec } from '../codec/codec'
 import { NodeConfig } from '../config'
-import { MaxInt, NETWORK_SIZE_LIMIT } from '../constants/consts'
+import {
+  MaxInt,
+  MaxWriteMessageSize,
+  NETWORK_SIZE_LIMIT
+} from '../constants/consts'
 import { WEBSOCKET_ENDPOINT } from '../constants/endpoints'
-import { MessageBuffer } from '../pubsub/messageBuffer'
+import { MessageBuffer, parseBatchMessage } from '../pubsub/messageBuffer'
 
 const BlockMode = 0
 const TxMode = 1
@@ -48,14 +52,12 @@ export class WebSocketService {
   }
 
   private getWebSocketUri(apiUrl: string): string {
-    console.log('WebSocketService.getWebSocketUri called with apiUrl:', apiUrl)
     let uri = apiUrl.replace(/http:\/\//g, 'ws://')
-    uri = uri.replace(/https:\/\//g, 'wss://')
+    uri = apiUrl.replace(/https:\/\//g, 'wss://')
     if (!uri.startsWith('ws')) {
       uri = 'ws://' + uri
     }
     uri = uri.replace(/\/$/, '')
-    console.log('WebSocket URI constructed:', uri)
     return uri
   }
 
@@ -73,11 +75,11 @@ export class WebSocketService {
           continue
         }
 
-        const codec = Codec.newReader(msgBatch, MaxInt)
-        const msgCount = codec.unpackInt(false)
-        console.log('Processing message batch, msgCount:', msgCount)
-        for (let i = 0; i < msgCount; i++) {
-          const msg = codec.unpackBytes(false)
+        console.log('msgBatch:', msgBatch)
+
+        const msgs = parseBatchMessage(MaxWriteMessageSize, msgBatch)
+        for (const msg of msgs) {
+          console.log('Message after Parsed:', msg)
           const mode = msg[0]
           const tmsg = msg.slice(1)
           if (mode === BlockMode) {

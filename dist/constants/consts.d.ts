@@ -24,5 +24,6 @@ export declare const MaxUint64Offset = 63;
 export declare const MaxUint64: bigint;
 export declare const MillisecondsPerSecond: bigint;
 export declare const MaxStringLen = 65535;
+export declare const MaxWriteMessageSize = 16777216;
 export declare const WINDOW_SIZE = 10;
 export declare const WINDOW_ARRAY_SIZE: number;

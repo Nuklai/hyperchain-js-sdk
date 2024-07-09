@@ -3,10 +3,10 @@ export declare class MessageBuffer {
     private pending;
     private pendingSize;
     private closed;
-    private timerId;
     private lock;
     private maxSize;
     private timeout;
+    private timer;
     constructor(maxSize: number, timeout: number);
     private withLock;
     send(msg: Uint8Array): Promise<void>;
@@ -15,3 +15,5 @@ export declare class MessageBuffer {
     hasMessages(): Promise<boolean>;
     close(): Promise<void>;
 }
+export declare function createBatchMessage(maxSize: number, msgs: Uint8Array[]): Uint8Array;
+export declare function parseBatchMessage(maxSize: number, msg: Uint8Array): Uint8Array[];

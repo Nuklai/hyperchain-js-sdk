@@ -1,6 +1,6 @@
 import { Id } from '@avalabs/avalanchejs';
-import { ActionRegistry, AuthRegistry } from 'chain/dependencies';
 import { StatefulBlock } from '../chain/block';
+import { ActionRegistry, AuthRegistry } from '../chain/dependencies';
 import { Dimension } from '../chain/fees';
 import { Result } from '../chain/result';
 import { Transaction } from '../chain/transaction';

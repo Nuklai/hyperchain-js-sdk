@@ -43307,6 +43307,7 @@ var MaxUint64Offset = 63;
 var MaxUint64 = BigInt("0xFFFFFFFFFFFFFFFF");
 var MillisecondsPerSecond = BigInt(1e3);
 var MaxStringLen = 65535;
+var MaxWriteMessageSize = 16777216;
 var WINDOW_SIZE = 10;
 var WINDOW_ARRAY_SIZE = WINDOW_SIZE + UINT64_LEN;
 
@@ -47801,6 +47802,7 @@ __export(constants_exports, {
   MaxUint64Offset: () => MaxUint64Offset,
   MaxUint8: () => MaxUint8,
   MaxUint8Offset: () => MaxUint8Offset,
+  MaxWriteMessageSize: () => MaxWriteMessageSize,
   MillisecondsPerSecond: () => MillisecondsPerSecond,
   NETWORK_SIZE_LIMIT: () => NETWORK_SIZE_LIMIT,
   REGISTER_VALIDATOR_STAKE_CHUNKS: () => REGISTER_VALIDATOR_STAKE_CHUNKS,
@@ -47843,25 +47845,74 @@ init_polyfills();
 // src/pubsub/index.ts
 var pubsub_exports = {};
 __export(pubsub_exports, {
-  MessageBuffer: () => MessageBuffer
+  MessageBuffer: () => MessageBuffer,
+  Timer: () => Timer,
+  createBatchMessage: () => createBatchMessage,
+  parseBatchMessage: () => parseBatchMessage
 });
 init_polyfills();
 
 // src/pubsub/messageBuffer.ts
 init_polyfills();
+
+// src/codec/utils.ts
+init_polyfills();
+function cummSize(arr) {
+  let size = 0;
+  for (const item of arr) {
+    size += item.size();
+  }
+  return size;
+}
+function bytesLen(bytes3) {
+  return INT_LEN + bytes3.length;
+}
+
+// src/pubsub/timer.ts
+init_polyfills();
+var Timer = class {
+  callback;
+  timeoutId = null;
+  constructor(callback) {
+    this.callback = callback;
+  }
+  setTimeoutIn(timeout) {
+    this.clearTimeout();
+    this.timeoutId = setTimeout(this.callback, timeout);
+  }
+  cancel() {
+    this.clearTimeout();
+  }
+  stop() {
+    this.clearTimeout();
+  }
+  clearTimeout() {
+    if (this.timeoutId !== null) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+  }
+};
+
+// src/pubsub/messageBuffer.ts
 var MessageBuffer = class {
   queue = [];
   pending = [];
   pendingSize = 0;
   closed = false;
-  timerId = null;
   lock = Promise.resolve();
   // Initialize lock as a resolved promise
   maxSize;
   timeout;
+  timer;
   constructor(maxSize, timeout) {
+    this.queue = [];
+    this.pending = [];
+    this.pendingSize = 0;
+    this.closed = false;
     this.maxSize = maxSize;
     this.timeout = timeout;
+    this.timer = new Timer(this.clearPending.bind(this));
   }
   async withLock(fn2) {
     let release;
@@ -47891,7 +47942,7 @@ var MessageBuffer = class {
       this.pendingSize += msgLength;
       this.pending.push(msg);
       if (this.pending.length === 1) {
-        this.timerId = setTimeout(() => this.clearPending(), this.timeout);
+        this.timer.setTimeoutIn(this.timeout);
       }
     });
   }
@@ -47901,18 +47952,12 @@ var MessageBuffer = class {
       if (this.pending.length === 0) {
         return;
       }
-      const codec = Codec.newWriter(this.maxSize, this.maxSize);
-      codec.packInt(this.pending.length);
-      for (const msg of this.pending) {
-        codec.packBytes(msg);
-      }
-      this.queue.push(codec.toBytes());
+      const batchMessage = createBatchMessage(this.maxSize, this.pending);
+      console.log("MessageBuffer: batchMessage:", batchMessage);
+      this.queue.push(batchMessage);
       this.pending = [];
       this.pendingSize = 0;
-      if (this.timerId) {
-        clearTimeout(this.timerId);
-        this.timerId = null;
-      }
+      this.timer.cancel();
     });
   }
   async getQueue() {
@@ -47936,6 +47981,31 @@ var MessageBuffer = class {
     });
   }
 };
+function createBatchMessage(maxSize, msgs) {
+  let size = INT_LEN;
+  for (const msg of msgs) {
+    size += bytesLen(msg);
+  }
+  const codec = Codec.newWriter(size, maxSize);
+  codec.packInt(msgs.length);
+  for (const msg of msgs) {
+    codec.packBytes(msg);
+  }
+  return codec.toBytes();
+}
+function parseBatchMessage(maxSize, msg) {
+  const codec = Codec.newReader(msg, maxSize);
+  const msgLen = codec.unpackInt(true);
+  const msgs = [];
+  for (let i = 0; i < msgLen; i++) {
+    const nextMsg = codec.unpackBytes(true);
+    if (codec.getError()) {
+      throw codec.getError();
+    }
+    msgs.push(nextMsg);
+  }
+  return msgs;
+}
 
 // src/sdk.ts
 init_polyfills();
@@ -48033,21 +48103,6 @@ init_polyfills();
 
 // src/chain/block.ts
 init_polyfills();
-
-// src/codec/utils.ts
-init_polyfills();
-function cummSize(arr) {
-  let size = 0;
-  for (const item of arr) {
-    size += item.size();
-  }
-  return size;
-}
-function bytesLen(bytes3) {
-  return INT_LEN + bytes3.length;
-}
-
-// src/chain/block.ts
 var StatefulBlock = class _StatefulBlock {
   prnt;
   tmstmp;
@@ -48274,14 +48329,12 @@ var WebSocketService = class {
     };
   }
   getWebSocketUri(apiUrl) {
-    console.log("WebSocketService.getWebSocketUri called with apiUrl:", apiUrl);
     let uri = apiUrl.replace(/http:\/\//g, "ws://");
-    uri = uri.replace(/https:\/\//g, "wss://");
+    uri = apiUrl.replace(/https:\/\//g, "wss://");
     if (!uri.startsWith("ws")) {
       uri = "ws://" + uri;
     }
     uri = uri.replace(/\/$/, "");
-    console.log("WebSocket URI constructed:", uri);
     return uri;
   }
   async readLoop() {
@@ -48297,11 +48350,10 @@ var WebSocketService = class {
           console.warn("got empty message");
           continue;
         }
-        const codec = Codec.newReader(msgBatch, MaxInt);
-        const msgCount = codec.unpackInt(false);
-        console.log("Processing message batch, msgCount:", msgCount);
-        for (let i = 0; i < msgCount; i++) {
-          const msg = codec.unpackBytes(false);
+        console.log("msgBatch:", msgBatch);
+        const msgs = parseBatchMessage(MaxWriteMessageSize, msgBatch);
+        for (const msg of msgs) {
+          console.log("Message after Parsed:", msg);
           const mode = msg[0];
           const tmsg = msg.slice(1);
           if (mode === BlockMode) {

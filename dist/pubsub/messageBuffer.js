@@ -1,16 +1,24 @@
 import { Codec } from '../codec/codec';
+import { bytesLen } from '../codec/utils';
+import { INT_LEN } from '../constants/consts';
+import { Timer } from './timer';
 export class MessageBuffer {
     queue = [];
     pending = [];
     pendingSize = 0;
     closed = false;
-    timerId = null;
     lock = Promise.resolve(); // Initialize lock as a resolved promise
     maxSize;
     timeout;
+    timer;
     constructor(maxSize, timeout) {
+        this.queue = [];
+        this.pending = [];
+        this.pendingSize = 0;
+        this.closed = false;
         this.maxSize = maxSize;
         this.timeout = timeout;
+        this.timer = new Timer(this.clearPending.bind(this));
     }
     async withLock(fn) {
         let release;
@@ -39,7 +47,7 @@ export class MessageBuffer {
             this.pendingSize += msgLength;
             this.pending.push(msg);
             if (this.pending.length === 1) {
-                this.timerId = setTimeout(() => this.clearPending(), this.timeout);
+                this.timer.setTimeoutIn(this.timeout);
             }
         });
     }
@@ -49,18 +57,12 @@ export class MessageBuffer {
             if (this.pending.length === 0) {
                 return;
             }
-            const codec = Codec.newWriter(this.maxSize, this.maxSize);
-            codec.packInt(this.pending.length);
-            for (const msg of this.pending) {
-                codec.packBytes(msg);
-            }
-            this.queue.push(codec.toBytes());
+            const batchMessage = createBatchMessage(this.maxSize, this.pending);
+            console.log('MessageBuffer: batchMessage:', batchMessage);
+            this.queue.push(batchMessage);
             this.pending = [];
             this.pendingSize = 0;
-            if (this.timerId) {
-                clearTimeout(this.timerId);
-                this.timerId = null;
-            }
+            this.timer.cancel();
         });
     }
     async getQueue() {
@@ -83,5 +85,30 @@ export class MessageBuffer {
             this.closed = true;
         });
     }
+}
+export function createBatchMessage(maxSize, msgs) {
+    let size = INT_LEN;
+    for (const msg of msgs) {
+        size += bytesLen(msg);
+    }
+    const codec = Codec.newWriter(size, maxSize);
+    codec.packInt(msgs.length);
+    for (const msg of msgs) {
+        codec.packBytes(msg);
+    }
+    return codec.toBytes();
+}
+export function parseBatchMessage(maxSize, msg) {
+    const codec = Codec.newReader(msg, maxSize);
+    const msgLen = codec.unpackInt(true);
+    const msgs = [];
+    for (let i = 0; i < msgLen; i++) {
+        const nextMsg = codec.unpackBytes(true);
+        if (codec.getError()) {
+            throw codec.getError();
+        }
+        msgs.push(nextMsg);
+    }
+    return msgs;
 }
 //# sourceMappingURL=messageBuffer.js.map
