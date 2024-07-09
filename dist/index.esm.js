@@ -47840,13 +47840,104 @@ __export(crypto_exports, {
 });
 init_polyfills();
 
-// src/services/index.ts
-var services_exports = {};
-__export(services_exports, {
-  RpcService: () => RpcService,
-  WebSocketService: () => WebSocketService,
-  ws: () => ws_exports
+// src/pubsub/index.ts
+var pubsub_exports = {};
+__export(pubsub_exports, {
+  MessageBuffer: () => MessageBuffer
 });
+init_polyfills();
+
+// src/pubsub/messageBuffer.ts
+init_polyfills();
+var MessageBuffer = class {
+  queue = [];
+  pending = [];
+  pendingSize = 0;
+  closed = false;
+  timerId = null;
+  lock = Promise.resolve();
+  // Initialize lock as a resolved promise
+  maxSize;
+  timeout;
+  constructor(maxSize, timeout) {
+    this.maxSize = maxSize;
+    this.timeout = timeout;
+  }
+  async withLock(fn2) {
+    let release;
+    const newLock = new Promise((resolve) => release = resolve);
+    const previousLock = this.lock;
+    this.lock = newLock;
+    await previousLock;
+    try {
+      return fn2();
+    } finally {
+      release();
+    }
+  }
+  async send(msg) {
+    await this.withLock(() => {
+      console.log("MessageBuffer.send called with msg:", msg);
+      const msgLength = msg.length;
+      if (msgLength > this.maxSize) {
+        throw new Error("Message too large");
+      }
+      if (this.pendingSize + msgLength > this.maxSize) {
+        console.log(
+          "MessageBuffer: pendingSize exceeded, clearing pending messages"
+        );
+        this.clearPending();
+      }
+      this.pendingSize += msgLength;
+      this.pending.push(msg);
+      if (this.pending.length === 1) {
+        this.timerId = setTimeout(() => this.clearPending(), this.timeout);
+      }
+    });
+  }
+  async clearPending() {
+    await this.withLock(() => {
+      console.log("MessageBuffer.clearPending called");
+      if (this.pending.length === 0) {
+        return;
+      }
+      const codec = Codec.newWriter(this.maxSize, this.maxSize);
+      codec.packInt(this.pending.length);
+      for (const msg of this.pending) {
+        codec.packBytes(msg);
+      }
+      this.queue.push(codec.toBytes());
+      this.pending = [];
+      this.pendingSize = 0;
+      if (this.timerId) {
+        clearTimeout(this.timerId);
+        this.timerId = null;
+      }
+    });
+  }
+  async getQueue() {
+    return this.withLock(() => {
+      console.log("MessageBuffer.getQueue called");
+      const result = this.queue;
+      this.queue = [];
+      return result;
+    });
+  }
+  async hasMessages() {
+    return this.withLock(() => this.queue.length > 0);
+  }
+  async close() {
+    await this.withLock(() => {
+      if (this.closed) {
+        throw new Error("Buffer already closed");
+      }
+      this.clearPending();
+      this.closed = true;
+    });
+  }
+};
+
+// src/sdk.ts
 init_polyfills();
 
 // src/services/rpc.ts
@@ -48152,69 +48243,11 @@ var Result = class _Result {
 // src/services/websocket.ts
 var BlockMode = 0;
 var TxMode = 1;
-var MessageBuffer = class {
-  queue = [];
-  maxSize;
-  timeout;
-  pending = [];
-  pendingSize = 0;
-  timerId = null;
-  constructor(maxSize, timeout) {
-    this.maxSize = maxSize;
-    this.timeout = timeout;
-  }
-  send(msg) {
-    console.log("MessageBuffer.send called with msg:", msg);
-    const msgLength = msg.length;
-    if (msgLength > this.maxSize) {
-      throw new Error("Message too large");
-    }
-    if (this.pendingSize + msgLength > this.maxSize) {
-      console.log(
-        "MessageBuffer: pendingSize exceeded, clearing pending messages"
-      );
-      this.clearPending();
-    }
-    this.pendingSize += msgLength;
-    this.pending.push(msg);
-    if (this.pending.length === 1) {
-      this.timerId = setTimeout(() => this.clearPending(), this.timeout);
-    }
-  }
-  clearPending() {
-    console.log("MessageBuffer.clearPending called");
-    if (this.pending.length === 0) {
-      return;
-    }
-    const codec = Codec.newWriter(this.maxSize, this.maxSize);
-    codec.packInt(this.pending.length);
-    for (const msg of this.pending) {
-      codec.packBytes(msg);
-    }
-    this.queue.push(codec.toBytes());
-    this.pending = [];
-    this.pendingSize = 0;
-    if (this.timerId) {
-      clearTimeout(this.timerId);
-      this.timerId = null;
-    }
-  }
-  getQueue() {
-    console.log("MessageBuffer.getQueue called");
-    const result = this.queue;
-    this.queue = [];
-    return result;
-  }
-  hasMessages() {
-    return this.queue.length > 0;
-  }
-};
 var WebSocketService = class {
   uri;
   conn;
   mb;
   readStopped = false;
-  writeStopped = false;
   pendingBlocks = [];
   pendingTxs = [];
   startedClose = false;
@@ -48295,8 +48328,8 @@ var WebSocketService = class {
     console.log("WebSocketService.writeLoop started");
     try {
       while (this.conn.readyState === WebSocket.OPEN) {
-        if (this.mb.hasMessages()) {
-          const queue = this.mb.getQueue();
+        if (await this.mb.hasMessages()) {
+          const queue = await this.mb.getQueue();
           for (const msg of queue) {
             console.log("Sending message:", msg);
             this.conn.send(msg);
@@ -48309,7 +48342,6 @@ var WebSocketService = class {
       this.err = error;
       this.close();
     } finally {
-      this.writeStopped = true;
       console.log("WebSocketService.writeLoop stopped");
     }
   }
@@ -48318,7 +48350,7 @@ var WebSocketService = class {
     if (this.closed) {
       throw new Error("Connection is closed");
     }
-    this.mb.send(new Uint8Array([BlockMode]));
+    await this.mb.send(new Uint8Array([BlockMode]));
   }
   async listenBlock(actionRegistry, authRegistry) {
     console.log("WebSocketService.listenBlock called");
@@ -48344,7 +48376,7 @@ var WebSocketService = class {
     const msg = new Uint8Array(1 + txBytes.length);
     msg.set([TxMode], 0);
     msg.set(txBytes, 1);
-    this.mb.send(msg);
+    await this.mb.send(msg);
   }
   async listenTx() {
     console.log("WebSocketService.listenTx called");
@@ -48358,10 +48390,11 @@ var WebSocketService = class {
     }
     throw this.err;
   }
-  close() {
+  async close() {
     console.log("WebSocketService.close called");
     if (!this.startedClose) {
       this.startedClose = true;
+      await this.mb.close();
       this.conn.close();
       this.closed = true;
     }
@@ -48418,6 +48451,43 @@ var WebSocketService = class {
   }
 };
 
+// src/sdk.ts
+var HyperchainSDK = class {
+  nodeConfig;
+  // Hypervm services
+  rpcService;
+  wsService;
+  // Registry
+  actionRegistry;
+  authRegistry;
+  constructor(nodeConfig) {
+    const defaultSDKConfig = {
+      baseApiUrl: MAINNET_PUBLIC_API_BASE_URL,
+      blockchainId: HYPERCHAIN_ID
+    };
+    this.nodeConfig = { ...defaultSDKConfig, ...nodeConfig };
+    this.rpcService = new RpcService(this.nodeConfig);
+    this.wsService = new WebSocketService(this.nodeConfig);
+    this.actionRegistry = new TypeParser();
+    this.authRegistry = new TypeParser();
+    this.initializeRegistries();
+  }
+  initializeRegistries() {
+    this.actionRegistry.register(TRANSFER_ID, Transfer.fromBytesCodec, false);
+    this.authRegistry.register(BLS_ID, BLS.fromBytesCodec, false);
+    this.authRegistry.register(ED25519_ID, ED25519.fromBytesCodec, false);
+  }
+};
+
+// src/services/index.ts
+var services_exports = {};
+__export(services_exports, {
+  RpcService: () => RpcService,
+  WebSocketService: () => WebSocketService,
+  ws: () => ws_exports
+});
+init_polyfills();
+
 // src/services/ws/index.ts
 var ws_exports = {};
 __export(ws_exports, {
@@ -48466,35 +48536,6 @@ __export(utils_exports2, {
   toHex: () => toHex
 });
 init_polyfills();
-
-// src/sdk.ts
-init_polyfills();
-var HyperchainSDK = class {
-  nodeConfig;
-  // Hypervm services
-  rpcService;
-  wsService;
-  // Registry
-  actionRegistry;
-  authRegistry;
-  constructor(nodeConfig) {
-    const defaultSDKConfig = {
-      baseApiUrl: MAINNET_PUBLIC_API_BASE_URL,
-      blockchainId: HYPERCHAIN_ID
-    };
-    this.nodeConfig = { ...defaultSDKConfig, ...nodeConfig };
-    this.rpcService = new RpcService(this.nodeConfig);
-    this.wsService = new WebSocketService(this.nodeConfig);
-    this.actionRegistry = new TypeParser();
-    this.authRegistry = new TypeParser();
-    this.initializeRegistries();
-  }
-  initializeRegistries() {
-    this.actionRegistry.register(TRANSFER_ID, Transfer.fromBytesCodec, false);
-    this.authRegistry.register(BLS_ID, BLS.fromBytesCodec, false);
-    this.authRegistry.register(ED25519_ID, ED25519.fromBytesCodec, false);
-  }
-};
 export {
   HyperchainSDK,
   actions_exports as actions,
@@ -48505,6 +48546,7 @@ export {
   config_exports as config,
   constants_exports as consts,
   crypto_exports as crypto,
+  pubsub_exports as pubsub,
   services_exports as services,
   utils_exports2 as utils
 };

@@ -10,7 +10,6 @@ export declare class WebSocketService {
     private conn;
     private mb;
     private readStopped;
-    private writeStopped;
     private pendingBlocks;
     private pendingTxs;
     private startedClose;
@@ -25,7 +24,7 @@ export declare class WebSocketService {
     listenBlock(actionRegistry: ActionRegistry, authRegistry: AuthRegistry): Promise<[StatefulBlock, Array<Result>, Dimension, Error?]>;
     registerTx(tx: Transaction): Promise<void>;
     listenTx(): Promise<[Id, Error?, Result?, Error?]>;
-    close(): void;
+    close(): Promise<void>;
     private unpackBlockMessage;
     private unpackTxMessage;
 }

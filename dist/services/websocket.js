@@ -4,69 +4,14 @@ import { Result } from '../chain/result';
 import { Codec } from '../codec/codec';
 import { MaxInt, NETWORK_SIZE_LIMIT } from '../constants/consts';
 import { WEBSOCKET_ENDPOINT } from '../constants/endpoints';
+import { MessageBuffer } from '../pubsub/messageBuffer';
 const BlockMode = 0;
 const TxMode = 1;
-class MessageBuffer {
-    queue = [];
-    maxSize;
-    timeout;
-    pending = [];
-    pendingSize = 0;
-    timerId = null;
-    constructor(maxSize, timeout) {
-        this.maxSize = maxSize;
-        this.timeout = timeout;
-    }
-    send(msg) {
-        console.log('MessageBuffer.send called with msg:', msg);
-        const msgLength = msg.length;
-        if (msgLength > this.maxSize) {
-            throw new Error('Message too large');
-        }
-        if (this.pendingSize + msgLength > this.maxSize) {
-            console.log('MessageBuffer: pendingSize exceeded, clearing pending messages');
-            this.clearPending();
-        }
-        this.pendingSize += msgLength;
-        this.pending.push(msg);
-        if (this.pending.length === 1) {
-            this.timerId = setTimeout(() => this.clearPending(), this.timeout);
-        }
-    }
-    clearPending() {
-        console.log('MessageBuffer.clearPending called');
-        if (this.pending.length === 0) {
-            return;
-        }
-        const codec = Codec.newWriter(this.maxSize, this.maxSize);
-        codec.packInt(this.pending.length);
-        for (const msg of this.pending) {
-            codec.packBytes(msg);
-        }
-        this.queue.push(codec.toBytes());
-        this.pending = [];
-        this.pendingSize = 0;
-        if (this.timerId) {
-            clearTimeout(this.timerId);
-            this.timerId = null;
-        }
-    }
-    getQueue() {
-        console.log('MessageBuffer.getQueue called');
-        const result = this.queue;
-        this.queue = [];
-        return result;
-    }
-    hasMessages() {
-        return this.queue.length > 0;
-    }
-}
 export class WebSocketService {
     uri;
     conn;
     mb;
     readStopped = false;
-    writeStopped = false;
     pendingBlocks = [];
     pendingTxs = [];
     startedClose = false;
@@ -147,8 +92,8 @@ export class WebSocketService {
         console.log('WebSocketService.writeLoop started');
         try {
             while (this.conn.readyState === WebSocket.OPEN) {
-                if (this.mb.hasMessages()) {
-                    const queue = this.mb.getQueue();
+                if (await this.mb.hasMessages()) {
+                    const queue = await this.mb.getQueue();
                     for (const msg of queue) {
                         console.log('Sending message:', msg);
                         this.conn.send(msg);
@@ -164,7 +109,6 @@ export class WebSocketService {
             this.close();
         }
         finally {
-            this.writeStopped = true;
             console.log('WebSocketService.writeLoop stopped');
         }
     }
@@ -173,7 +117,7 @@ export class WebSocketService {
         if (this.closed) {
             throw new Error('Connection is closed');
         }
-        this.mb.send(new Uint8Array([BlockMode]));
+        await this.mb.send(new Uint8Array([BlockMode]));
     }
     async listenBlock(actionRegistry, authRegistry) {
         console.log('WebSocketService.listenBlock called');
@@ -199,7 +143,7 @@ export class WebSocketService {
         const msg = new Uint8Array(1 + txBytes.length);
         msg.set([TxMode], 0);
         msg.set(txBytes, 1);
-        this.mb.send(msg);
+        await this.mb.send(msg);
     }
     async listenTx() {
         console.log('WebSocketService.listenTx called');
@@ -213,10 +157,11 @@ export class WebSocketService {
         }
         throw this.err;
     }
-    close() {
+    async close() {
         console.log('WebSocketService.close called');
         if (!this.startedClose) {
             this.startedClose = true;
+            await this.mb.close(); // Ensure the message buffer is closed properly
             this.conn.close();
             this.closed = true;
         }
