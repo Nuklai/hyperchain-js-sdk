@@ -48410,6 +48410,8 @@ var WebSocketService = class {
   }
   async listenBlock(actionRegistry, authRegistry) {
     console.log("WebSocketService.listenBlock called");
+    console.log("this.err: ", this.err);
+    console.log("readStopped: ", this.readStopped);
     while (!this.readStopped) {
       const msg = this.pendingBlocks.shift();
       console.log("message received: ", msg);
