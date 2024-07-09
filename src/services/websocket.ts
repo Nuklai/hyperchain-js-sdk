@@ -53,7 +53,7 @@ export class WebSocketService {
 
   private getWebSocketUri(apiUrl: string): string {
     let uri = apiUrl.replace(/http:\/\//g, 'ws://')
-    uri = apiUrl.replace(/https:\/\//g, 'wss://')
+    uri = uri.replace(/https:\/\//g, 'wss://')
     if (!uri.startsWith('ws')) {
       uri = 'ws://' + uri
     }
