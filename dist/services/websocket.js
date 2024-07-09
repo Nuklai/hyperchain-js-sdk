@@ -195,7 +195,7 @@ export class WebSocketService {
         const codec = Codec.newReader(msg, MaxInt);
         console.log('Initial codec state:', codec);
         const txId = codec.unpackID(true);
-        console.log('Unpacked txId:', txId.toString());
+        console.log('Unpacked txId:', txId);
         const hasError = codec.unpackBool();
         console.log('Unpacked hasError:', hasError);
         if (hasError) {
@@ -203,8 +203,8 @@ export class WebSocketService {
             console.error('Transaction error unpacked:', error);
             return Promise.resolve([txId, error, undefined, undefined]);
         }
+        console.log('Unpacking result...');
         const [result, err] = Result.fromBytes(codec);
-        console.log('Unpacked result:', result);
         if (err) {
             console.error('Error unpacking transaction result:', err);
             return Promise.reject(err);

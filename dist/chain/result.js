@@ -55,6 +55,9 @@ export class Result {
         const success = codec.unpackBool();
         console.log('Unpacked success:', success);
         const error = codec.unpackLimitedBytes(MaxInt);
+        if (codec.getError()) {
+            return [new Result(false, new Uint8Array(), [], [], 0n), codec.getError()];
+        }
         console.log('Unpacked error:', error);
         const numActions = codec.unpackByte();
         console.log('Unpacked numActions:', numActions);
