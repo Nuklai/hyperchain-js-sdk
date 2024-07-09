@@ -83,10 +83,6 @@ export class StatefulBlock {
             }
         }
         block.stateRoot = codec.unpackID(false);
-        // Ensure no leftover bytes
-        if (!codec.empty()) {
-            throw new Error(`Invalid object: remaining=${bytes.length - codec.getOffset()}`);
-        }
         return [block, codec.getError()];
     }
 }

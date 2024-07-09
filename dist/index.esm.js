@@ -47670,11 +47670,6 @@ var StatefulBlock = class _StatefulBlock {
       }
     }
     block.stateRoot = codec.unpackID(false);
-    if (!codec.empty()) {
-      throw new Error(
-        `Invalid object: remaining=${bytes3.length - codec.getOffset()}`
-      );
-    }
     return [block, codec.getError()];
   }
 };
