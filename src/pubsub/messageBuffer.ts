@@ -37,12 +37,12 @@ export class MessageBuffer {
     }
   }
 
-  async send(msg: Uint8Array) {
+  async send(msg: Uint8Array): Promise<Error | undefined> {
     await this.withLock(() => {
       const msgLength = msg.length
 
       if (msgLength > this.maxSize) {
-        throw new Error('Message too large')
+        return new Error('Message too large')
       }
 
       if (this.pendingSize + msgLength > this.maxSize) {
@@ -56,6 +56,7 @@ export class MessageBuffer {
         this.timer.setTimeoutIn(this.timeout)
       }
     })
+    return undefined
   }
 
   async clearPending() {

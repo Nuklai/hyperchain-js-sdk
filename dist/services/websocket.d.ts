@@ -20,10 +20,20 @@ export declare class WebSocketService {
     private getWebSocketUri;
     private readLoop;
     private writeLoop;
-    registerBlocks(): Promise<void>;
-    listenBlock(actionRegistry: ActionRegistry, authRegistry: AuthRegistry): Promise<[StatefulBlock, Array<Result>, Dimension, Error?]>;
-    registerTx(tx: Transaction): Promise<void>;
-    listenTx(): Promise<[Id, Error?, Result?, Error?]>;
+    registerBlocks(): Promise<Error | undefined>;
+    listenBlock(actionRegistry: ActionRegistry, authRegistry: AuthRegistry): Promise<{
+        block: StatefulBlock;
+        results: Array<Result>;
+        prices: Dimension;
+        err: Error | undefined;
+    }>;
+    registerTx(tx: Transaction): Promise<Error | undefined>;
+    listenTx(): Promise<{
+        txId: Id;
+        dErr: Error | undefined;
+        result: Result | undefined;
+        err: Error | undefined;
+    }>;
     close(): Promise<void>;
     private unpackBlockMessage;
     private unpackTxMessage;

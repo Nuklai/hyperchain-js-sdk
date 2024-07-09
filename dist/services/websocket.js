@@ -95,9 +95,9 @@ export class WebSocketService {
     }
     async registerBlocks() {
         if (this.closed) {
-            throw new Error('Connection is closed');
+            return new Error('Connection is closed');
         }
-        await this.mb.send(new Uint8Array([BlockMode]));
+        return await this.mb.send(new Uint8Array([BlockMode]));
     }
     async listenBlock(actionRegistry, authRegistry) {
         console.log('WebSocketService.listenBlock called');
@@ -106,23 +106,22 @@ export class WebSocketService {
             if (msg) {
                 return this.unpackBlockMessage(msg, actionRegistry, authRegistry);
             }
-            await new Promise((resolve) => setTimeout(resolve, 100));
         }
         throw this.err;
     }
     async registerTx(tx) {
         console.log('WebSocketService.registerTx called with transaction:', tx);
         if (this.closed) {
-            throw new Error('Connection is closed');
+            return new Error('Connection is closed');
         }
         const [txBytes, err] = tx.toBytes();
         if (err) {
-            throw err;
+            return err;
         }
         const msg = new Uint8Array(1 + txBytes.length);
         msg.set([TxMode], 0);
         msg.set(txBytes, 1);
-        await this.mb.send(msg);
+        return await this.mb.send(msg);
     }
     async listenTx() {
         console.log('WebSocketService.listenTx called');
@@ -131,7 +130,6 @@ export class WebSocketService {
             if (msg) {
                 return this.unpackTxMessage(msg);
             }
-            await new Promise((resolve) => setTimeout(resolve, 100));
         }
         throw this.err;
     }
@@ -165,22 +163,22 @@ export class WebSocketService {
         if (!codec.empty()) {
             return Promise.reject(new Error('Invalid object'));
         }
-        return Promise.resolve([block, results, prices]);
+        return Promise.resolve({ block, results, prices, err: undefined });
     }
     async unpackTxMessage(msg) {
         const codec = Codec.newReader(msg, MaxInt);
         const txId = codec.unpackID(true);
         const hasError = codec.unpackBool();
         if (hasError) {
-            const error = new Error(codec.unpackString(true));
-            return Promise.resolve([txId, error, undefined, undefined]);
+            const dErr = new Error(codec.unpackString(true));
+            return Promise.resolve({ txId, dErr, result: undefined, err: undefined });
         }
         const [result, err] = Result.fromBytes(codec);
         if (err) {
             return Promise.reject(err);
         }
         const finalError = codec.getError();
-        return Promise.resolve([txId, undefined, result, finalError]);
+        return Promise.resolve({ txId, dErr: undefined, result, err: finalError });
     }
 }
 //# sourceMappingURL=websocket.js.map

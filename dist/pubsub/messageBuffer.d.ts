@@ -9,7 +9,7 @@ export declare class MessageBuffer {
     private timer;
     constructor(maxSize: number, timeout: number);
     private withLock;
-    send(msg: Uint8Array): Promise<void>;
+    send(msg: Uint8Array): Promise<Error | undefined>;
     clearPending(): Promise<void>;
     getQueue(): Promise<Array<Uint8Array>>;
     hasMessages(): Promise<boolean>;

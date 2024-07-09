@@ -110,51 +110,59 @@ export class WebSocketService {
     }
   }
 
-  async registerBlocks() {
+  async registerBlocks(): Promise<Error | undefined> {
     if (this.closed) {
-      throw new Error('Connection is closed')
+      return new Error('Connection is closed')
     }
-    await this.mb.send(new Uint8Array([BlockMode]))
+    return await this.mb.send(new Uint8Array([BlockMode]))
   }
 
   async listenBlock(
     actionRegistry: ActionRegistry,
     authRegistry: AuthRegistry
-  ): Promise<[StatefulBlock, Array<Result>, Dimension, Error?]> {
+  ): Promise<{
+    block: StatefulBlock
+    results: Array<Result>
+    prices: Dimension
+    err: Error | undefined
+  }> {
     console.log('WebSocketService.listenBlock called')
     while (!this.readStopped) {
       const msg = this.pendingBlocks.shift()
       if (msg) {
         return this.unpackBlockMessage(msg, actionRegistry, authRegistry)
       }
-      await new Promise((resolve) => setTimeout(resolve, 100))
     }
     throw this.err
   }
 
-  async registerTx(tx: Transaction) {
+  async registerTx(tx: Transaction): Promise<Error | undefined> {
     console.log('WebSocketService.registerTx called with transaction:', tx)
     if (this.closed) {
-      throw new Error('Connection is closed')
+      return new Error('Connection is closed')
     }
     const [txBytes, err] = tx.toBytes()
     if (err) {
-      throw err
+      return err
     }
     const msg = new Uint8Array(1 + txBytes.length)
     msg.set([TxMode], 0)
     msg.set(txBytes, 1)
-    await this.mb.send(msg)
+    return await this.mb.send(msg)
   }
 
-  async listenTx(): Promise<[Id, Error?, Result?, Error?]> {
+  async listenTx(): Promise<{
+    txId: Id
+    dErr: Error | undefined
+    result: Result | undefined
+    err: Error | undefined
+  }> {
     console.log('WebSocketService.listenTx called')
     while (!this.readStopped) {
       const msg = this.pendingTxs.shift()
       if (msg) {
         return this.unpackTxMessage(msg)
       }
-      await new Promise((resolve) => setTimeout(resolve, 100))
     }
     throw this.err
   }
@@ -173,7 +181,12 @@ export class WebSocketService {
     msg: Uint8Array,
     actionRegistry: ActionRegistry,
     authRegistry: AuthRegistry
-  ): Promise<[StatefulBlock, Array<Result>, Dimension, Error?]> {
+  ): Promise<{
+    block: StatefulBlock
+    results: Array<Result>
+    prices: Dimension
+    err: Error | undefined
+  }> {
     let codec = Codec.newReader(msg, MaxInt)
     const blkMessage = codec.unpackBytes(true)
     const [block, c] = StatefulBlock.fromBytes(
@@ -198,24 +211,27 @@ export class WebSocketService {
     if (!codec.empty()) {
       return Promise.reject(new Error('Invalid object'))
     }
-    return Promise.resolve([block, results, prices])
+    return Promise.resolve({ block, results, prices, err: undefined })
   }
 
-  private async unpackTxMessage(
-    msg: Uint8Array
-  ): Promise<[Id, Error?, Result?, Error?]> {
+  private async unpackTxMessage(msg: Uint8Array): Promise<{
+    txId: Id
+    dErr: Error | undefined
+    result: Result | undefined
+    err: Error | undefined
+  }> {
     const codec = Codec.newReader(msg, MaxInt)
     const txId = codec.unpackID(true)
     const hasError = codec.unpackBool()
     if (hasError) {
-      const error = new Error(codec.unpackString(true))
-      return Promise.resolve([txId, error, undefined, undefined])
+      const dErr = new Error(codec.unpackString(true))
+      return Promise.resolve({ txId, dErr, result: undefined, err: undefined })
     }
     const [result, err] = Result.fromBytes(codec)
     if (err) {
       return Promise.reject(err)
     }
     const finalError = codec.getError()
-    return Promise.resolve([txId, undefined, result, finalError])
+    return Promise.resolve({ txId, dErr: undefined, result, err: finalError })
   }
 }

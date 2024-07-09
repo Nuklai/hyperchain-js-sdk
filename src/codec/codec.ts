@@ -196,8 +196,6 @@ export class Codec {
 
   unpackLimitedBytes(limit: number, required: boolean): Uint8Array {
     const size = this.unpackInt(required)
-    console.log('Unpacked size:', size)
-    console.log('Limit:', limit)
     if (size > limit) {
       this.error = errOversized
       return new Uint8Array()

@@ -43459,8 +43459,6 @@ var Codec = class _Codec {
   }
   unpackLimitedBytes(limit, required) {
     const size = this.unpackInt(required);
-    console.log("Unpacked size:", size);
-    console.log("Limit:", limit);
     if (size > limit) {
       this.error = errOversized;
       return new Uint8Array();
@@ -47933,7 +47931,7 @@ var MessageBuffer = class {
     await this.withLock(() => {
       const msgLength = msg.length;
       if (msgLength > this.maxSize) {
-        throw new Error("Message too large");
+        return new Error("Message too large");
       }
       if (this.pendingSize + msgLength > this.maxSize) {
         this.clearPending();
@@ -47944,6 +47942,7 @@ var MessageBuffer = class {
         this.timer.setTimeoutIn(this.timeout);
       }
     });
+    return void 0;
   }
   async clearPending() {
     await this.withLock(() => {
@@ -48380,9 +48379,9 @@ var WebSocketService = class {
   }
   async registerBlocks() {
     if (this.closed) {
-      throw new Error("Connection is closed");
+      return new Error("Connection is closed");
     }
-    await this.mb.send(new Uint8Array([BlockMode]));
+    return await this.mb.send(new Uint8Array([BlockMode]));
   }
   async listenBlock(actionRegistry, authRegistry) {
     console.log("WebSocketService.listenBlock called");
@@ -48391,23 +48390,22 @@ var WebSocketService = class {
       if (msg) {
         return this.unpackBlockMessage(msg, actionRegistry, authRegistry);
       }
-      await new Promise((resolve) => setTimeout(resolve, 100));
     }
     throw this.err;
   }
   async registerTx(tx) {
     console.log("WebSocketService.registerTx called with transaction:", tx);
     if (this.closed) {
-      throw new Error("Connection is closed");
+      return new Error("Connection is closed");
     }
     const [txBytes, err2] = tx.toBytes();
     if (err2) {
-      throw err2;
+      return err2;
     }
     const msg = new Uint8Array(1 + txBytes.length);
     msg.set([TxMode], 0);
     msg.set(txBytes, 1);
-    await this.mb.send(msg);
+    return await this.mb.send(msg);
   }
   async listenTx() {
     console.log("WebSocketService.listenTx called");
@@ -48416,7 +48414,6 @@ var WebSocketService = class {
       if (msg) {
         return this.unpackTxMessage(msg);
       }
-      await new Promise((resolve) => setTimeout(resolve, 100));
     }
     throw this.err;
   }
@@ -48454,22 +48451,22 @@ var WebSocketService = class {
     if (!codec.empty()) {
       return Promise.reject(new Error("Invalid object"));
     }
-    return Promise.resolve([block, results, prices]);
+    return Promise.resolve({ block, results, prices, err: void 0 });
   }
   async unpackTxMessage(msg) {
     const codec = Codec.newReader(msg, MaxInt);
     const txId = codec.unpackID(true);
     const hasError = codec.unpackBool();
     if (hasError) {
-      const error = new Error(codec.unpackString(true));
-      return Promise.resolve([txId, error, void 0, void 0]);
+      const dErr = new Error(codec.unpackString(true));
+      return Promise.resolve({ txId, dErr, result: void 0, err: void 0 });
     }
     const [result, err2] = Result.fromBytes(codec);
     if (err2) {
       return Promise.reject(err2);
     }
     const finalError = codec.getError();
-    return Promise.resolve([txId, void 0, result, finalError]);
+    return Promise.resolve({ txId, dErr: void 0, result, err: finalError });
   }
 };
 
