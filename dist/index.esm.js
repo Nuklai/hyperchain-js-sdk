@@ -47635,13 +47635,27 @@ var StatefulBlock = class _StatefulBlock {
     return [bytes3, codec.getError()];
   }
   static fromBytes(bytes3, actionRegistry, authRegistry) {
+    const block = new _StatefulBlock(
+      EMPTY_ID,
+      BigInt(0),
+      BigInt(0),
+      [],
+      EMPTY_ID,
+      0,
+      /* @__PURE__ */ new Map()
+    );
     let codec = Codec.newReader(bytes3, NETWORK_SIZE_LIMIT);
-    const prnt = codec.unpackID(false);
-    const tmstmp = codec.unpackInt64(false);
-    const hght = codec.unpackUint64(false);
+    block.size = bytes3.length;
+    console.log("Unpacked block message size:", block.size);
+    block.prnt = codec.unpackID(false);
+    console.log("Unpacked block message parent:", block.prnt.toString());
+    block.tmstmp = codec.unpackInt64(false);
+    console.log("Unpacked block message timestamp:", block.tmstmp.toString());
+    block.hght = codec.unpackUint64(false);
+    console.log("Unpacked block message height:", block.hght.toString());
     const txCount = codec.unpackInt(false);
-    const txs = [];
-    const authCounts = /* @__PURE__ */ new Map();
+    console.log("Unpacked block message tx count:", txCount.toString());
+    block.authCounts = /* @__PURE__ */ new Map();
     for (let i = 0; i < txCount; i++) {
       const [tx, c] = Transaction.fromBytesCodec(
         codec,
@@ -47649,41 +47663,25 @@ var StatefulBlock = class _StatefulBlock {
         authRegistry
       );
       if (c.getError()) {
-        return [
-          new _StatefulBlock(
-            prnt,
-            tmstmp,
-            hght,
-            txs,
-            EMPTY_ID,
-            bytes3.length,
-            authCounts
-          ),
-          c
-        ];
+        return [block, c];
       }
+      console.log("tx:", JSON.stringify(tx, null, 2));
       codec = c;
-      txs.push(tx);
+      block.txs.push(tx);
       if (tx.auth) {
-        authCounts.set(
+        block.authCounts.set(
           tx.auth.getTypeId(),
-          (authCounts.get(tx.auth.getTypeId()) || 0) + 1
+          (block.authCounts.get(tx.auth.getTypeId()) || 0) + 1
         );
       }
     }
-    const stateRoot = codec.unpackID(false);
-    return [
-      new _StatefulBlock(
-        prnt,
-        tmstmp,
-        hght,
-        txs,
-        stateRoot,
-        bytes3.length,
-        authCounts
-      ),
-      codec
-    ];
+    block.stateRoot = codec.unpackID(false);
+    if (!codec.empty()) {
+      throw new Error(
+        `Invalid object: remaining=${bytes3.length - codec.getOffset()}`
+      );
+    }
+    return [block, codec];
   }
 };
 
@@ -47841,13 +47839,15 @@ var Result = class _Result {
   static resultsFromBytes(bytes3) {
     const codec = Codec.newReader(bytes3, MaxInt);
     const items = codec.unpackInt(false);
+    console.log("items: ", items);
     const results = [];
     for (let i = 0; i < items; i++) {
-      const [resultBytes, err2] = _Result.fromBytes(codec);
+      const [result, err2] = _Result.fromBytes(codec);
       if (err2) {
         return [[], err2];
       }
-      results.push(resultBytes);
+      console.log("result: ", JSON.stringify(result, null, 2));
+      results.push(result);
     }
     if (!codec.empty()) {
       throw new Error("Invalid object");
@@ -48404,7 +48404,9 @@ var WebSocketService = class {
     if (this.closed) {
       return new Error("Connection is closed");
     }
-    return await this.mb.send(new Uint8Array([BlockMode]));
+    const msg = new Uint8Array(1);
+    msg.set([BlockMode], 0);
+    return await this.mb.send(msg);
   }
   async listenBlock(actionRegistry, authRegistry) {
     console.log("WebSocketService.listenBlock called");
@@ -48457,6 +48459,7 @@ var WebSocketService = class {
   unpackBlockMessage(msg, actionRegistry, authRegistry) {
     let codec = Codec.newReader(msg, MaxInt);
     const blkMessage = codec.unpackBytes(true);
+    console.log("Unpacked block message:", blkMessage);
     const [block, c] = StatefulBlock.fromBytes(
       blkMessage,
       actionRegistry,
@@ -48465,17 +48468,22 @@ var WebSocketService = class {
     if (c.getError()) {
       return Promise.reject(c.getError());
     }
+    console.log("Unpacked block:", block);
     codec = c;
     const resultsMessage = codec.unpackBytes(true);
+    console.log("Unpacked results message:", resultsMessage);
     const [results, errResults] = Result.resultsFromBytes(resultsMessage);
     if (errResults) {
       return Promise.reject(errResults);
     }
+    console.log("results: ", JSON.stringify(results, null, 2));
     const pricesMessage = codec.unpackFixedBytes(DimensionsLen);
+    console.log("pricesMessage: ", pricesMessage);
     const [prices, errMessage] = dimensionFromBytes(pricesMessage);
     if (errMessage) {
       return Promise.reject(errMessage);
     }
+    console.log("prices: ", prices);
     if (!codec.empty()) {
       return Promise.reject(new Error("Invalid object"));
     }

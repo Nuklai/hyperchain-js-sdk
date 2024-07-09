@@ -1,7 +1,7 @@
-import { Id } from '@avalabs/avalanchejs';
-import { Codec } from '../codec/codec';
-import { ActionRegistry, AuthRegistry } from './dependencies';
-import { Transaction } from './transaction';
+import { Id } from "@avalabs/avalanchejs";
+import { Codec } from "../codec/codec";
+import { ActionRegistry, AuthRegistry } from "./dependencies";
+import { Transaction } from "./transaction";
 export declare class StatefulBlock {
     prnt: Id;
     tmstmp: bigint;

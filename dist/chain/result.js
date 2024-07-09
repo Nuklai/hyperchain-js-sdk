@@ -1,9 +1,9 @@
 // Copyright (C) 2024, Nuklai. All rights reserved.
 // See the file LICENSE for licensing terms.
-import { DimensionsLen, dimensionFromBytes, dimensionToBytes } from '../chain/fees';
-import { Codec } from '../codec/codec';
-import { bytesLen, cummSize } from '../codec/utils';
-import { BOOL_LEN, INT_LEN, MaxInt, UINT64_LEN, UINT8_LEN } from '../constants/consts';
+import { DimensionsLen, dimensionFromBytes, dimensionToBytes } from "../chain/fees";
+import { Codec } from "../codec/codec";
+import { bytesLen, cummSize } from "../codec/utils";
+import { BOOL_LEN, INT_LEN, MaxInt, UINT64_LEN, UINT8_LEN } from "../constants/consts";
 export class Result {
     success;
     error;
@@ -74,18 +74,20 @@ export class Result {
         return [new Result(success, error, outputs, units, fee), codec.getError()];
     }
     static resultsFromBytes(bytes) {
-        const codec = Codec.newReader(bytes, MaxInt);
+        const codec = Codec.newReader(bytes, MaxInt); // could be much larger than [NetworkSizeLimit]
         const items = codec.unpackInt(false);
+        console.log("items: ", items);
         const results = [];
         for (let i = 0; i < items; i++) {
-            const [resultBytes, err] = Result.fromBytes(codec);
+            const [result, err] = Result.fromBytes(codec);
             if (err) {
                 return [[], err];
             }
-            results.push(resultBytes);
+            console.log("result: ", JSON.stringify(result, null, 2));
+            results.push(result);
         }
         if (!codec.empty()) {
-            throw new Error('Invalid object');
+            throw new Error("Invalid object");
         }
         return [results, codec.getError()];
     }

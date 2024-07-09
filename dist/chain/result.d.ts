@@ -1,5 +1,5 @@
-import { Dimension } from '../chain/fees';
-import { Codec } from '../codec/codec';
+import { Dimension } from "../chain/fees";
+import { Codec } from "../codec/codec";
 export declare class Result {
     success: boolean;
     error: Uint8Array;

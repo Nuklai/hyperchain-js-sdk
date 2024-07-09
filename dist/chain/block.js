@@ -1,11 +1,11 @@
 // Copyright (C) 2024, Nuklai. All rights reserved.
 // See the file LICENSE for licensing terms.
-import { Id } from '@avalabs/avalanchejs';
-import { Codec } from '../codec/codec';
-import { cummSize } from '../codec/utils';
-import { EMPTY_ID, ID_LEN, NETWORK_SIZE_LIMIT, UINT64_LEN, WINDOW_ARRAY_SIZE } from '../constants/consts';
-import { ToID } from '../utils/hashing';
-import { Transaction } from './transaction';
+import { Id } from "@avalabs/avalanchejs";
+import { Codec } from "../codec/codec";
+import { cummSize } from "../codec/utils";
+import { EMPTY_ID, ID_LEN, NETWORK_SIZE_LIMIT, UINT64_LEN, WINDOW_ARRAY_SIZE } from "../constants/consts";
+import { ToID } from "../utils/hashing";
+import { Transaction } from "./transaction";
 export class StatefulBlock {
     prnt;
     tmstmp;
@@ -62,32 +62,38 @@ export class StatefulBlock {
         return [bytes, codec.getError()];
     }
     static fromBytes(bytes, actionRegistry, authRegistry) {
+        const block = new StatefulBlock(EMPTY_ID, BigInt(0), BigInt(0), [], EMPTY_ID, 0, new Map());
         let codec = Codec.newReader(bytes, NETWORK_SIZE_LIMIT);
-        const prnt = codec.unpackID(false);
-        const tmstmp = codec.unpackInt64(false);
-        const hght = codec.unpackUint64(false);
+        block.size = bytes.length;
+        console.log("Unpacked block message size:", block.size);
+        block.prnt = codec.unpackID(false);
+        console.log("Unpacked block message parent:", block.prnt.toString());
+        block.tmstmp = codec.unpackInt64(false);
+        console.log("Unpacked block message timestamp:", block.tmstmp.toString());
+        block.hght = codec.unpackUint64(false);
+        console.log("Unpacked block message height:", block.hght.toString());
+        // Parse transactions
         const txCount = codec.unpackInt(false);
-        const txs = [];
-        const authCounts = new Map();
+        console.log("Unpacked block message tx count:", txCount.toString());
+        block.authCounts = new Map();
         for (let i = 0; i < txCount; i++) {
             const [tx, c] = Transaction.fromBytesCodec(codec, actionRegistry, authRegistry);
             if (c.getError()) {
-                return [
-                    new StatefulBlock(prnt, tmstmp, hght, txs, EMPTY_ID, bytes.length, authCounts),
-                    c
-                ];
+                return [block, c];
             }
+            console.log("tx:", JSON.stringify(tx, null, 2));
             codec = c;
-            txs.push(tx);
+            block.txs.push(tx);
             if (tx.auth) {
-                authCounts.set(tx.auth.getTypeId(), (authCounts.get(tx.auth.getTypeId()) || 0) + 1);
+                block.authCounts.set(tx.auth.getTypeId(), (block.authCounts.get(tx.auth.getTypeId()) || 0) + 1);
             }
         }
-        const stateRoot = codec.unpackID(false);
-        return [
-            new StatefulBlock(prnt, tmstmp, hght, txs, stateRoot, bytes.length, authCounts),
-            codec
-        ];
+        block.stateRoot = codec.unpackID(false);
+        // Ensure no leftover bytes
+        if (!codec.empty()) {
+            throw new Error(`Invalid object: remaining=${bytes.length - codec.getOffset()}`);
+        }
+        return [block, codec];
     }
 }
 //# sourceMappingURL=block.js.map
