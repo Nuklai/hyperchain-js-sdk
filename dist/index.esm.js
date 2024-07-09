@@ -48412,6 +48412,7 @@ var WebSocketService = class {
     console.log("WebSocketService.listenBlock called");
     while (!this.readStopped) {
       const msg = this.pendingBlocks.shift();
+      console.log("message received: ", msg);
       if (msg) {
         return this.unpackBlockMessage(msg, actionRegistry, authRegistry);
       }
@@ -48458,6 +48459,7 @@ var WebSocketService = class {
   }
   unpackBlockMessage(msg, actionRegistry, authRegistry) {
     let codec = Codec.newReader(msg, MaxInt);
+    console.log("setup codec on unpackBlockMessage");
     const blkMessage = codec.unpackBytes(true);
     console.log("Unpacked block message:", blkMessage);
     const [block, c] = StatefulBlock.fromBytes(
