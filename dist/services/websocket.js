@@ -58,7 +58,6 @@ export class WebSocketService {
                 console.log('msgBatch:', msgBatch);
                 const msgs = parseBatchMessage(MaxWriteMessageSize, msgBatch);
                 for (const msg of msgs) {
-                    console.log('Message after Parsed:', msg);
                     const mode = msg[0];
                     const tmsg = msg.slice(1);
                     if (mode === BlockMode) {
@@ -196,7 +195,7 @@ export class WebSocketService {
         const codec = Codec.newReader(msg, MaxInt);
         console.log('Initial codec state:', codec);
         const txId = codec.unpackID(true);
-        console.log('Unpacked txId:', txId);
+        console.log('Unpacked txId:', txId.toString());
         const hasError = codec.unpackBool();
         console.log('Unpacked hasError:', hasError);
         if (hasError) {
@@ -204,7 +203,6 @@ export class WebSocketService {
             console.error('Transaction error unpacked:', error);
             return Promise.resolve([txId, error, undefined, undefined]);
         }
-        console.log('Unpacking result...');
         const [result, err] = Result.fromBytes(codec);
         console.log('Unpacked result:', result);
         if (err) {

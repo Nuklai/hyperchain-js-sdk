@@ -37636,24 +37636,32 @@ var Result = class _Result {
   }
   static fromBytes(codec) {
     const success = codec.unpackBool();
+    console.log("Unpacked success:", success);
     const error = codec.unpackLimitedBytes(MaxInt);
+    console.log("Unpacked error:", error);
     const numActions = codec.unpackByte();
+    console.log("Unpacked numActions:", numActions);
     const outputs = [];
     for (let i = 0; i < numActions; i++) {
       const numOutputs = codec.unpackByte();
+      console.log("Unpacked numOutputs:", numOutputs);
       const actionOutputs = [];
       for (let j2 = 0; j2 < numOutputs; j2++) {
         const output3 = codec.unpackLimitedBytes(MaxInt);
+        console.log("Unpacked output:", output3);
         actionOutputs.push(output3);
       }
       outputs.push(actionOutputs);
     }
     const consumedRaw = codec.unpackFixedBytes(DimensionsLen);
+    console.log("Unpacked consumedRaw:", consumedRaw);
     const [units, err2] = dimensionFromBytes(consumedRaw);
+    console.log("Unpacked units:", units);
     if (err2) {
       return [new _Result(false, new Uint8Array(), [], [], 0n), err2];
     }
     const fee = codec.unpackUint64(true);
+    console.log("Unpacked fee:", fee);
     return [new _Result(success, error, outputs, units, fee), codec.getError()];
   }
   static resultsFromBytes(bytes3) {
@@ -37732,7 +37740,6 @@ var WebSocketService = class {
         console.log("msgBatch:", msgBatch);
         const msgs = parseBatchMessage(MaxWriteMessageSize, msgBatch);
         for (const msg of msgs) {
-          console.log("Message after Parsed:", msg);
           const mode = msg[0];
           const tmsg = msg.slice(1);
           if (mode === BlockMode) {
@@ -37867,7 +37874,7 @@ var WebSocketService = class {
     const codec = Codec.newReader(msg, MaxInt);
     console.log("Initial codec state:", codec);
     const txId = codec.unpackID(true);
-    console.log("Unpacked txId:", txId);
+    console.log("Unpacked txId:", txId.toString());
     const hasError = codec.unpackBool();
     console.log("Unpacked hasError:", hasError);
     if (hasError) {
@@ -37875,7 +37882,6 @@ var WebSocketService = class {
       console.error("Transaction error unpacked:", error);
       return Promise.resolve([txId, error, void 0, void 0]);
     }
-    console.log("Unpacking result...");
     const [result, err2] = Result.fromBytes(codec);
     console.log("Unpacked result:", result);
     if (err2) {
