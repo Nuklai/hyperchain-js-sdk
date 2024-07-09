@@ -36715,6 +36715,8 @@ __export(chain_exports, {
   BaseTxSize: () => BaseTxSize,
   DimensionsLen: () => DimensionsLen,
   FeeDimensions: () => FeeDimensions,
+  Result: () => Result,
+  StatefulBlock: () => StatefulBlock,
   Transaction: () => Transaction,
   dimensionFromBytes: () => dimensionFromBytes,
   dimensionToBytes: () => dimensionToBytes,
@@ -36761,84 +36763,26 @@ var BaseTx = class _BaseTx {
   }
 };
 
-// src/chain/dependencies.ts
+// src/chain/block.ts
 init_polyfills();
 
-// src/chain/fees.ts
+// src/codec/utils.ts
 init_polyfills();
-var import_big_integer = __toESM(require_BigInteger(), 1);
-var FeeDimensions = 5;
-var DimensionsLen = UINT64_LEN * FeeDimensions;
-function dimensionToBytes(d2) {
-  const codec = Codec.newWriter(DimensionsLen, DimensionsLen);
-  for (let i = 0; i < FeeDimensions; i++) {
-    codec.packUint64(BigInt(d2[i]));
+function cummSize(arr) {
+  let size = 0;
+  for (const item of arr) {
+    size += item.size();
   }
-  return codec.toBytes();
+  return size;
 }
-function dimensionFromBytes(bytes3) {
-  const codec = Codec.newReader(bytes3, DimensionsLen);
-  const dimension = [];
-  for (let i = 0; i < FeeDimensions; i++) {
-    dimension.push(Number(codec.unpackUint64(true)));
-  }
-  return [dimension, codec.getError()];
+function bytesLen(bytes3) {
+  return INT_LEN + bytes3.length;
 }
-function mul64(a, b2) {
-  return BigInt(a) * BigInt(b2);
+function bytesLenSize(bytesSize) {
+  return INT_LEN + bytesSize;
 }
-function add64(a, b2) {
-  return a + b2;
-}
-function mulSum(a, b2) {
-  let val = 0n;
-  for (let i = 0; i < FeeDimensions; i++) {
-    try {
-      const v2 = mul64(a[i], b2[i]);
-      val = add64(val, v2);
-    } catch (err2) {
-      return [0n, err2];
-    }
-  }
-  return [val];
-}
-function estimateUnits(genesisInfo, actions, authFactory) {
-  let bandwidth = BaseTxSize;
-  let stateKeysMaxChunks = [];
-  let computeOp = (0, import_big_integer.default)(genesisInfo.baseUnits);
-  let readsOp = (0, import_big_integer.default)(0);
-  let allocatesOp = (0, import_big_integer.default)(0);
-  let writesOp = (0, import_big_integer.default)(0);
-  bandwidth += UINT8_LEN;
-  actions.forEach((action) => {
-    bandwidth += BYTE_LEN + action.size();
-    const actionStateKeysMaxChunks = action.stateKeysMaxChunks();
-    stateKeysMaxChunks = [...stateKeysMaxChunks, ...actionStateKeysMaxChunks];
-    computeOp = computeOp.add(action.computeUnits());
-  });
-  bandwidth += BYTE_LEN + authFactory.bandwidth();
-  const sponsorStateKeyMaxChunks = [STORAGE_BALANCE_CHUNKS];
-  stateKeysMaxChunks = [...stateKeysMaxChunks, ...sponsorStateKeyMaxChunks];
-  computeOp = computeOp.add(authFactory.computeUnits());
-  const compute = computeOp.valueOf();
-  for (const maxChunks of stateKeysMaxChunks) {
-    readsOp = readsOp.add(genesisInfo.storageKeyReadUnits);
-    allocatesOp = allocatesOp.add(genesisInfo.storageKeyAllocateUnits);
-    writesOp = writesOp.add(genesisInfo.storageKeyWriteUnits);
-    readsOp = readsOp.add(
-      (0, import_big_integer.default)(maxChunks).multiply((0, import_big_integer.default)(genesisInfo.storageValueReadUnits))
-    );
-    allocatesOp = allocatesOp.add(
-      (0, import_big_integer.default)(maxChunks).multiply((0, import_big_integer.default)(genesisInfo.storageValueAllocateUnits))
-    );
-    writesOp = writesOp.add(
-      (0, import_big_integer.default)(maxChunks).multiply((0, import_big_integer.default)(genesisInfo.storageValueWriteUnits))
-    );
-  }
-  const reads = readsOp.valueOf();
-  const allocates = allocatesOp.valueOf();
-  const writes = writesOp.valueOf();
-  return [bandwidth, compute, reads, allocates, writes];
+function stringLen(str2) {
+  return INT_LEN + str2.length;
 }
 
 // src/chain/transaction.ts
@@ -37018,11 +36962,288 @@ var Transaction = class _Transaction {
   }
 };
 
+// src/chain/block.ts
+var StatefulBlock = class _StatefulBlock {
+  prnt;
+  tmstmp;
+  hght;
+  txs;
+  stateRoot;
+  size;
+  authCounts;
+  constructor(prnt, tmstmp, hght, txs, stateRoot, size, authCounts) {
+    this.prnt = prnt;
+    this.tmstmp = tmstmp;
+    this.hght = hght;
+    this.txs = txs;
+    this.stateRoot = stateRoot;
+    this.size = size;
+    this.authCounts = authCounts;
+  }
+  getSize() {
+    return this.size;
+  }
+  async id() {
+    const [blk, err2] = this.toBytes();
+    if (err2) {
+      return EMPTY_ID;
+    }
+    return Ve.fromBytes(ToID(blk))[0];
+  }
+  toBytes() {
+    const size = ID_LEN + UINT64_LEN + UINT64_LEN + UINT64_LEN + WINDOW_ARRAY_SIZE + cummSize(this.txs) + ID_LEN + UINT64_LEN + UINT64_LEN;
+    const codec = Codec.newWriter(size, NETWORK_SIZE_LIMIT);
+    codec.packID(this.prnt);
+    codec.packInt64(this.tmstmp);
+    codec.packUint64(this.hght);
+    codec.packInt(this.txs.length);
+    for (const tx of this.txs) {
+      const [txBytes, err2] = tx.toBytes();
+      if (err2) {
+        return [new Uint8Array(), err2];
+      }
+      codec.packFixedBytes(txBytes);
+      this.authCounts.set(
+        tx.auth.getTypeId(),
+        (this.authCounts.get(tx.auth.getTypeId()) || 0) + 1
+      );
+    }
+    codec.packID(this.stateRoot);
+    const bytes3 = codec.toBytes();
+    this.size = bytes3.length;
+    return [bytes3, codec.getError()];
+  }
+  static fromBytes(bytes3, actionRegistry, authRegistry) {
+    let codec = Codec.newReader(bytes3, NETWORK_SIZE_LIMIT);
+    const prnt = codec.unpackID(false);
+    const tmstmp = codec.unpackInt64(false);
+    const hght = codec.unpackUint64(false);
+    const txCount = codec.unpackInt(false);
+    const txs = [];
+    const authCounts = /* @__PURE__ */ new Map();
+    for (let i = 0; i < txCount; i++) {
+      const [tx, c] = Transaction.fromBytesCodec(
+        codec,
+        actionRegistry,
+        authRegistry
+      );
+      if (c.getError()) {
+        return [
+          new _StatefulBlock(
+            prnt,
+            tmstmp,
+            hght,
+            txs,
+            EMPTY_ID,
+            bytes3.length,
+            authCounts
+          ),
+          c
+        ];
+      }
+      codec = c;
+      txs.push(tx);
+      if (tx.auth) {
+        authCounts.set(
+          tx.auth.getTypeId(),
+          (authCounts.get(tx.auth.getTypeId()) || 0) + 1
+        );
+      }
+    }
+    const stateRoot = codec.unpackID(false);
+    return [
+      new _StatefulBlock(
+        prnt,
+        tmstmp,
+        hght,
+        txs,
+        stateRoot,
+        bytes3.length,
+        authCounts
+      ),
+      codec
+    ];
+  }
+};
+
+// src/chain/dependencies.ts
+init_polyfills();
+
+// src/chain/fees.ts
+init_polyfills();
+var import_big_integer = __toESM(require_BigInteger(), 1);
+var FeeDimensions = 5;
+var DimensionsLen = UINT64_LEN * FeeDimensions;
+function dimensionToBytes(d2) {
+  const codec = Codec.newWriter(DimensionsLen, DimensionsLen);
+  for (let i = 0; i < FeeDimensions; i++) {
+    codec.packUint64(BigInt(d2[i]));
+  }
+  return codec.toBytes();
+}
+function dimensionFromBytes(bytes3) {
+  const codec = Codec.newReader(bytes3, DimensionsLen);
+  const dimension = [];
+  for (let i = 0; i < FeeDimensions; i++) {
+    dimension.push(Number(codec.unpackUint64(true)));
+  }
+  return [dimension, codec.getError()];
+}
+function mul64(a, b2) {
+  return BigInt(a) * BigInt(b2);
+}
+function add64(a, b2) {
+  return a + b2;
+}
+function mulSum(a, b2) {
+  let val = 0n;
+  for (let i = 0; i < FeeDimensions; i++) {
+    try {
+      const v2 = mul64(a[i], b2[i]);
+      val = add64(val, v2);
+    } catch (err2) {
+      return [0n, err2];
+    }
+  }
+  return [val];
+}
+function estimateUnits(genesisInfo, actions, authFactory) {
+  let bandwidth = BaseTxSize;
+  let stateKeysMaxChunks = [];
+  let computeOp = (0, import_big_integer.default)(genesisInfo.baseUnits);
+  let readsOp = (0, import_big_integer.default)(0);
+  let allocatesOp = (0, import_big_integer.default)(0);
+  let writesOp = (0, import_big_integer.default)(0);
+  bandwidth += UINT8_LEN;
+  actions.forEach((action) => {
+    bandwidth += BYTE_LEN + action.size();
+    const actionStateKeysMaxChunks = action.stateKeysMaxChunks();
+    stateKeysMaxChunks = [...stateKeysMaxChunks, ...actionStateKeysMaxChunks];
+    computeOp = computeOp.add(action.computeUnits());
+  });
+  bandwidth += BYTE_LEN + authFactory.bandwidth();
+  const sponsorStateKeyMaxChunks = [STORAGE_BALANCE_CHUNKS];
+  stateKeysMaxChunks = [...stateKeysMaxChunks, ...sponsorStateKeyMaxChunks];
+  computeOp = computeOp.add(authFactory.computeUnits());
+  const compute = computeOp.valueOf();
+  for (const maxChunks of stateKeysMaxChunks) {
+    readsOp = readsOp.add(genesisInfo.storageKeyReadUnits);
+    allocatesOp = allocatesOp.add(genesisInfo.storageKeyAllocateUnits);
+    writesOp = writesOp.add(genesisInfo.storageKeyWriteUnits);
+    readsOp = readsOp.add(
+      (0, import_big_integer.default)(maxChunks).multiply((0, import_big_integer.default)(genesisInfo.storageValueReadUnits))
+    );
+    allocatesOp = allocatesOp.add(
+      (0, import_big_integer.default)(maxChunks).multiply((0, import_big_integer.default)(genesisInfo.storageValueAllocateUnits))
+    );
+    writesOp = writesOp.add(
+      (0, import_big_integer.default)(maxChunks).multiply((0, import_big_integer.default)(genesisInfo.storageValueWriteUnits))
+    );
+  }
+  const reads = readsOp.valueOf();
+  const allocates = allocatesOp.valueOf();
+  const writes = writesOp.valueOf();
+  return [bandwidth, compute, reads, allocates, writes];
+}
+
+// src/chain/result.ts
+init_polyfills();
+var Result = class _Result {
+  success;
+  error;
+  outputs;
+  units;
+  fee;
+  constructor(success, error, outputs, units, fee) {
+    this.success = success;
+    this.error = error;
+    this.outputs = outputs;
+    this.units = units;
+    this.fee = fee;
+  }
+  size() {
+    let outputSize = UINT8_LEN;
+    for (const action of this.outputs) {
+      outputSize += UINT8_LEN;
+      for (const output3 of action) {
+        outputSize += bytesLen(output3);
+      }
+    }
+    return BOOL_LEN + bytesLen(this.error) + outputSize + DimensionsLen + UINT64_LEN;
+  }
+  toBytes(codec) {
+    const codecResult = codec;
+    codecResult.packBool(this.success);
+    codecResult.packBytes(this.error);
+    codecResult.packByte(this.outputs.length);
+    for (const outputs of this.outputs) {
+      codecResult.packByte(outputs.length);
+      for (const output3 of outputs) {
+        codecResult.packBytes(output3);
+      }
+    }
+    codecResult.packFixedBytes(dimensionToBytes(this.units));
+    codecResult.packUint64(this.fee);
+    return codecResult;
+  }
+  static resultsToBytes(src) {
+    const size = INT_LEN + cummSize(src);
+    let codec = Codec.newWriter(size, MaxInt);
+    codec.packInt(src.length);
+    for (const result of src) {
+      codec = result.toBytes(codec);
+    }
+    return [codec.toBytes(), codec.getError()];
+  }
+  static fromBytes(codec) {
+    const success = codec.unpackBool();
+    const error = codec.unpackLimitedBytes(MaxInt, false);
+    const numActions = codec.unpackByte();
+    const outputs = [];
+    for (let i = 0; i < numActions; i++) {
+      const numOutputs = codec.unpackByte();
+      const actionOutputs = [];
+      for (let j2 = 0; j2 < numOutputs; j2++) {
+        const output3 = codec.unpackLimitedBytes(MaxInt, false);
+        actionOutputs.push(output3);
+      }
+      outputs.push(actionOutputs);
+    }
+    const consumedRaw = codec.unpackFixedBytes(DimensionsLen);
+    const [units, err2] = dimensionFromBytes(consumedRaw);
+    if (err2) {
+      return [new _Result(false, new Uint8Array(), [], [], 0n), err2];
+    }
+    const fee = codec.unpackUint64(true);
+    return [new _Result(success, error, outputs, units, fee), codec.getError()];
+  }
+  static resultsFromBytes(bytes3) {
+    const codec = Codec.newReader(bytes3, MaxInt);
+    const items = codec.unpackInt(false);
+    const results = [];
+    for (let i = 0; i < items; i++) {
+      const [resultBytes, err2] = _Result.fromBytes(codec);
+      if (err2) {
+        return [[], err2];
+      }
+      results.push(resultBytes);
+    }
+    if (!codec.empty()) {
+      throw new Error("Invalid object");
+    }
+    return [results, codec.getError()];
+  }
+};
+
 // src/codec/index.ts
 var codec_exports = {};
 __export(codec_exports, {
   Codec: () => Codec,
-  TypeParser: () => TypeParser
+  TypeParser: () => TypeParser,
+  bytesLen: () => bytesLen,
+  bytesLenSize: () => bytesLenSize,
+  cummSize: () => cummSize,
+  stringLen: () => stringLen
 });
 init_polyfills();
 
@@ -37234,19 +37455,6 @@ init_polyfills();
 
 // src/pubsub/messageBuffer.ts
 init_polyfills();
-
-// src/codec/utils.ts
-init_polyfills();
-function cummSize(arr) {
-  let size = 0;
-  for (const item of arr) {
-    size += item.size();
-  }
-  return size;
-}
-function bytesLen(bytes3) {
-  return INT_LEN + bytes3.length;
-}
 
 // src/pubsub/timer.ts
 init_polyfills();
@@ -37474,202 +37682,6 @@ var RpcService = class extends Api {
 
 // src/services/websocket.ts
 init_polyfills();
-
-// src/chain/block.ts
-init_polyfills();
-var StatefulBlock = class _StatefulBlock {
-  prnt;
-  tmstmp;
-  hght;
-  txs;
-  stateRoot;
-  size;
-  authCounts;
-  constructor(prnt, tmstmp, hght, txs, stateRoot, size, authCounts) {
-    this.prnt = prnt;
-    this.tmstmp = tmstmp;
-    this.hght = hght;
-    this.txs = txs;
-    this.stateRoot = stateRoot;
-    this.size = size;
-    this.authCounts = authCounts;
-  }
-  getSize() {
-    return this.size;
-  }
-  async id() {
-    const [blk, err2] = this.toBytes();
-    if (err2) {
-      return EMPTY_ID;
-    }
-    return Ve.fromBytes(ToID(blk))[0];
-  }
-  toBytes() {
-    const size = ID_LEN + UINT64_LEN + UINT64_LEN + UINT64_LEN + WINDOW_ARRAY_SIZE + cummSize(this.txs) + ID_LEN + UINT64_LEN + UINT64_LEN;
-    const codec = Codec.newWriter(size, NETWORK_SIZE_LIMIT);
-    codec.packID(this.prnt);
-    codec.packInt64(this.tmstmp);
-    codec.packUint64(this.hght);
-    codec.packInt(this.txs.length);
-    for (const tx of this.txs) {
-      const [txBytes, err2] = tx.toBytes();
-      if (err2) {
-        return [new Uint8Array(), err2];
-      }
-      codec.packFixedBytes(txBytes);
-      this.authCounts.set(
-        tx.auth.getTypeId(),
-        (this.authCounts.get(tx.auth.getTypeId()) || 0) + 1
-      );
-    }
-    codec.packID(this.stateRoot);
-    const bytes3 = codec.toBytes();
-    this.size = bytes3.length;
-    return [bytes3, codec.getError()];
-  }
-  static fromBytes(bytes3, actionRegistry, authRegistry) {
-    let codec = Codec.newReader(bytes3, NETWORK_SIZE_LIMIT);
-    const prnt = codec.unpackID(false);
-    const tmstmp = codec.unpackInt64(false);
-    const hght = codec.unpackUint64(false);
-    const txCount = codec.unpackInt(false);
-    const txs = [];
-    const authCounts = /* @__PURE__ */ new Map();
-    for (let i = 0; i < txCount; i++) {
-      const [tx, c] = Transaction.fromBytesCodec(
-        codec,
-        actionRegistry,
-        authRegistry
-      );
-      if (c.getError()) {
-        return [
-          new _StatefulBlock(
-            prnt,
-            tmstmp,
-            hght,
-            txs,
-            EMPTY_ID,
-            bytes3.length,
-            authCounts
-          ),
-          c
-        ];
-      }
-      codec = c;
-      txs.push(tx);
-      if (tx.auth) {
-        authCounts.set(
-          tx.auth.getTypeId(),
-          (authCounts.get(tx.auth.getTypeId()) || 0) + 1
-        );
-      }
-    }
-    const stateRoot = codec.unpackID(false);
-    return [
-      new _StatefulBlock(
-        prnt,
-        tmstmp,
-        hght,
-        txs,
-        stateRoot,
-        bytes3.length,
-        authCounts
-      ),
-      codec
-    ];
-  }
-};
-
-// src/chain/result.ts
-init_polyfills();
-var Result = class _Result {
-  success;
-  error;
-  outputs;
-  units;
-  fee;
-  constructor(success, error, outputs, units, fee) {
-    this.success = success;
-    this.error = error;
-    this.outputs = outputs;
-    this.units = units;
-    this.fee = fee;
-  }
-  size() {
-    let outputSize = UINT8_LEN;
-    for (const action of this.outputs) {
-      outputSize += UINT8_LEN;
-      for (const output3 of action) {
-        outputSize += bytesLen(output3);
-      }
-    }
-    return BOOL_LEN + bytesLen(this.error) + outputSize + DimensionsLen + UINT64_LEN;
-  }
-  toBytes(codec) {
-    const codecResult = codec;
-    codecResult.packBool(this.success);
-    codecResult.packBytes(this.error);
-    codecResult.packByte(this.outputs.length);
-    for (const outputs of this.outputs) {
-      codecResult.packByte(outputs.length);
-      for (const output3 of outputs) {
-        codecResult.packBytes(output3);
-      }
-    }
-    codecResult.packFixedBytes(dimensionToBytes(this.units));
-    codecResult.packUint64(this.fee);
-    return codecResult;
-  }
-  static resultsToBytes(src) {
-    const size = INT_LEN + cummSize(src);
-    let codec = Codec.newWriter(size, MaxInt);
-    codec.packInt(src.length);
-    for (const result of src) {
-      codec = result.toBytes(codec);
-    }
-    return [codec.toBytes(), codec.getError()];
-  }
-  static fromBytes(codec) {
-    const success = codec.unpackBool();
-    const error = codec.unpackLimitedBytes(MaxInt, false);
-    const numActions = codec.unpackByte();
-    const outputs = [];
-    for (let i = 0; i < numActions; i++) {
-      const numOutputs = codec.unpackByte();
-      const actionOutputs = [];
-      for (let j2 = 0; j2 < numOutputs; j2++) {
-        const output3 = codec.unpackLimitedBytes(MaxInt, false);
-        actionOutputs.push(output3);
-      }
-      outputs.push(actionOutputs);
-    }
-    const consumedRaw = codec.unpackFixedBytes(DimensionsLen);
-    const [units, err2] = dimensionFromBytes(consumedRaw);
-    if (err2) {
-      return [new _Result(false, new Uint8Array(), [], [], 0n), err2];
-    }
-    const fee = codec.unpackUint64(true);
-    return [new _Result(success, error, outputs, units, fee), codec.getError()];
-  }
-  static resultsFromBytes(bytes3) {
-    const codec = Codec.newReader(bytes3, MaxInt);
-    const items = codec.unpackInt(false);
-    const results = [];
-    for (let i = 0; i < items; i++) {
-      const [resultBytes, err2] = _Result.fromBytes(codec);
-      if (err2) {
-        return [[], err2];
-      }
-      results.push(resultBytes);
-    }
-    if (!codec.empty()) {
-      throw new Error("Invalid object");
-    }
-    return [results, codec.getError()];
-  }
-};
-
-// src/services/websocket.ts
 var BlockMode = 0;
 var TxMode = 1;
 var WebSocketService = class {
