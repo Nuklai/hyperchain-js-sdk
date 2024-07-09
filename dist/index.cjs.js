@@ -37689,6 +37689,7 @@ var WebSocketService = class {
   conn;
   mb;
   readStopped = false;
+  writeStopped = false;
   pendingBlocks = [];
   pendingTxs = [];
   startedClose = false;
@@ -37712,10 +37713,14 @@ var WebSocketService = class {
       this.err = new Error(`WebSocket error: ${event}`);
       this.close();
     };
+    this.conn.onclose = () => {
+      console.log("WebSocket connection closed");
+      this.close();
+    };
   }
   getWebSocketUri(apiUrl) {
     let uri = apiUrl.replace(/http:\/\//g, "ws://");
-    uri = uri.replace(/https:\/\//g, "wss://");
+    uri = apiUrl.replace(/https:\/\//g, "wss://");
     if (!uri.startsWith("ws")) {
       uri = "ws://" + uri;
     }
@@ -37754,10 +37759,14 @@ var WebSocketService = class {
   }
   async writeLoop() {
     try {
-      while (this.conn.readyState === WebSocket.OPEN) {
+      while (this.conn.readyState === WebSocket.OPEN && !this.writeStopped) {
         if (await this.mb.hasMessages()) {
           const queue = await this.mb.getQueue();
           for (const msg of queue) {
+            if (this.conn.readyState !== WebSocket.OPEN) {
+              console.warn("Attempted to send message after connection closed");
+              return;
+            }
             this.conn.send(msg);
           }
         }
@@ -37766,6 +37775,8 @@ var WebSocketService = class {
     } catch (error) {
       this.err = error;
       this.close();
+    } finally {
+      this.writeStopped = true;
     }
   }
   async registerBlocks() {
@@ -37815,8 +37826,11 @@ var WebSocketService = class {
     if (!this.startedClose) {
       this.startedClose = true;
       await this.mb.close();
-      this.conn.close();
+      if (this.conn.readyState === WebSocket.OPEN) {
+        this.conn.close();
+      }
       this.closed = true;
+      this.writeStopped = true;
     }
   }
   unpackBlockMessage(msg, actionRegistry, authRegistry) {

@@ -22,6 +22,7 @@ export class WebSocketService {
   private conn!: WebSocket
   private mb: MessageBuffer
   private readStopped: boolean = false
+  private writeStopped: boolean = false
   private pendingBlocks: Array<Uint8Array> = []
   private pendingTxs: Array<Uint8Array> = []
   private startedClose: boolean = false
@@ -48,11 +49,16 @@ export class WebSocketService {
       this.err = new Error(`WebSocket error: ${event}`)
       this.close()
     }
+
+    this.conn.onclose = () => {
+      console.log('WebSocket connection closed')
+      this.close()
+    }
   }
 
   private getWebSocketUri(apiUrl: string): string {
     let uri = apiUrl.replace(/http:\/\//g, 'ws://')
-    uri = uri.replace(/https:\/\//g, 'wss://')
+    uri = apiUrl.replace(/https:\/\//g, 'wss://')
     if (!uri.startsWith('ws')) {
       uri = 'ws://' + uri
     }
@@ -94,10 +100,14 @@ export class WebSocketService {
 
   private async writeLoop() {
     try {
-      while (this.conn.readyState === WebSocket.OPEN) {
+      while (this.conn.readyState === WebSocket.OPEN && !this.writeStopped) {
         if (await this.mb.hasMessages()) {
           const queue = await this.mb.getQueue()
           for (const msg of queue) {
+            if (this.conn.readyState !== WebSocket.OPEN) {
+              console.warn('Attempted to send message after connection closed')
+              return
+            }
             this.conn.send(msg)
           }
         }
@@ -107,6 +117,8 @@ export class WebSocketService {
     } catch (error: any) {
       this.err = error
       this.close()
+    } finally {
+      this.writeStopped = true
     }
   }
 
@@ -176,8 +188,11 @@ export class WebSocketService {
     if (!this.startedClose) {
       this.startedClose = true
       await this.mb.close() // Ensure the message buffer is closed properly
-      this.conn.close()
+      if (this.conn.readyState === WebSocket.OPEN) {
+        this.conn.close()
+      }
       this.closed = true
+      this.writeStopped = true // Ensure the write loop stops
     }
   }
 

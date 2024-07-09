@@ -10,6 +10,7 @@ export declare class WebSocketService {
     private conn;
     private mb;
     private readStopped;
+    private writeStopped;
     private pendingBlocks;
     private pendingTxs;
     private startedClose;
