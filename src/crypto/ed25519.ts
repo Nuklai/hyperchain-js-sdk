@@ -1,3 +1,6 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 import { utils } from '@avalabs/avalanchejs'
 import {
   sign as ed25519Sign,

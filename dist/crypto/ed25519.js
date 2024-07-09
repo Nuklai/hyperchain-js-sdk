@@ -1,3 +1,5 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
 import { utils } from '@avalabs/avalanchejs';
 import { sign as ed25519Sign, verify as ed25519Verify, etc } from '@noble/ed25519';
 import { createHash as nodeCreateHash } from 'crypto';

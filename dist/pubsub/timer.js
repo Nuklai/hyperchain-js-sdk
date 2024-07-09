@@ -1,3 +1,5 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
 export class Timer {
     callback;
     timeoutId = null;

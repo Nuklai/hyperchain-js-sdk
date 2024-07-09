@@ -1,3 +1,5 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
 import { Codec } from '../codec/codec';
 import { bytesLen } from '../codec/utils';
 import { INT_LEN } from '../constants/consts';

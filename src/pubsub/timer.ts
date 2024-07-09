@@ -1,3 +1,6 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 export class Timer {
   private callback: () => void
   private timeoutId: ReturnType<typeof setTimeout> | null = null

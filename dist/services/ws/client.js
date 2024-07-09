@@ -1,3 +1,5 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
 import { isNodeEnvironment } from '../../utils/utils';
 let WebSocketClient;
 export async function loadWebSocketClient() {

@@ -1,3 +1,5 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
 import { StatefulBlock } from '../chain/block';
 import { DimensionsLen, dimensionFromBytes } from '../chain/fees';
 import { Result } from '../chain/result';
