@@ -117,8 +117,6 @@ export class WebSocketService {
     }
     async listenBlock(actionRegistry, authRegistry) {
         console.log("WebSocketService.listenBlock called");
-        console.log("this.err: ", this.err);
-        console.log("readStopped: ", this.readStopped);
         while (!this.readStopped) {
             const msg = this.pendingBlocks.shift();
             console.log("message received: ", msg);
@@ -170,18 +168,19 @@ export class WebSocketService {
     }
     unpackBlockMessage(msg, actionRegistry, authRegistry) {
         let codec = Codec.newReader(msg, MaxInt);
-        console.log("setup codec on unpackBlockMessage");
         const blkMessage = codec.unpackBytes(true);
-        console.log("Unpacked block message:", blkMessage);
         const [block, c] = StatefulBlock.fromBytes(blkMessage, actionRegistry, authRegistry);
         if (c.getError()) {
             return Promise.reject(c.getError());
         }
-        console.log("Unpacked block:", block);
+        console.log("codec bytes before: ", codec.toBytes());
         codec = c;
+        console.log("codec bytes after: ", codec.toBytes());
         const resultsMessage = codec.unpackBytes(true);
         console.log("Unpacked results message:", resultsMessage);
         const [results, errResults] = Result.resultsFromBytes(resultsMessage);
+        console.log("results: ", results);
+        console.log("errResults: ", errResults);
         if (errResults) {
             return Promise.reject(errResults);
         }

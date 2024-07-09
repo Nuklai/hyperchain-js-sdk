@@ -47646,15 +47646,10 @@ var StatefulBlock = class _StatefulBlock {
     );
     let codec = Codec.newReader(bytes3, NETWORK_SIZE_LIMIT);
     block.size = bytes3.length;
-    console.log("Unpacked block message size:", block.size);
     block.prnt = codec.unpackID(false);
-    console.log("Unpacked block message parent:", block.prnt.toString());
     block.tmstmp = codec.unpackInt64(false);
-    console.log("Unpacked block message timestamp:", block.tmstmp.toString());
     block.hght = codec.unpackUint64(false);
-    console.log("Unpacked block message height:", block.hght.toString());
     const txCount = codec.unpackInt(false);
-    console.log("Unpacked block message tx count:", txCount.toString());
     block.authCounts = /* @__PURE__ */ new Map();
     for (let i = 0; i < txCount; i++) {
       const [tx, c] = Transaction.fromBytesCodec(
@@ -47665,7 +47660,6 @@ var StatefulBlock = class _StatefulBlock {
       if (c.getError()) {
         return [block, c];
       }
-      console.log("tx:", JSON.stringify(tx, null, 2));
       codec = c;
       block.txs.push(tx);
       if (tx.auth) {
@@ -47839,14 +47833,12 @@ var Result = class _Result {
   static resultsFromBytes(bytes3) {
     const codec = Codec.newReader(bytes3, MaxInt);
     const items = codec.unpackInt(false);
-    console.log("items: ", items);
     const results = [];
     for (let i = 0; i < items; i++) {
       const [result, err2] = _Result.fromBytes(codec);
       if (err2) {
         return [[], err2];
       }
-      console.log("result: ", JSON.stringify(result, null, 2));
       results.push(result);
     }
     if (!codec.empty()) {
@@ -48410,8 +48402,6 @@ var WebSocketService = class {
   }
   async listenBlock(actionRegistry, authRegistry) {
     console.log("WebSocketService.listenBlock called");
-    console.log("this.err: ", this.err);
-    console.log("readStopped: ", this.readStopped);
     while (!this.readStopped) {
       const msg = this.pendingBlocks.shift();
       console.log("message received: ", msg);
@@ -48461,9 +48451,7 @@ var WebSocketService = class {
   }
   unpackBlockMessage(msg, actionRegistry, authRegistry) {
     let codec = Codec.newReader(msg, MaxInt);
-    console.log("setup codec on unpackBlockMessage");
     const blkMessage = codec.unpackBytes(true);
-    console.log("Unpacked block message:", blkMessage);
     const [block, c] = StatefulBlock.fromBytes(
       blkMessage,
       actionRegistry,
@@ -48472,11 +48460,14 @@ var WebSocketService = class {
     if (c.getError()) {
       return Promise.reject(c.getError());
     }
-    console.log("Unpacked block:", block);
+    console.log("codec bytes before: ", codec.toBytes());
     codec = c;
+    console.log("codec bytes after: ", codec.toBytes());
     const resultsMessage = codec.unpackBytes(true);
     console.log("Unpacked results message:", resultsMessage);
     const [results, errResults] = Result.resultsFromBytes(resultsMessage);
+    console.log("results: ", results);
+    console.log("errResults: ", errResults);
     if (errResults) {
       return Promise.reject(errResults);
     }

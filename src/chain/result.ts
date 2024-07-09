@@ -103,14 +103,12 @@ export class Result {
   static resultsFromBytes(bytes: Uint8Array): [Array<Result>, Error?] {
     const codec = Codec.newReader(bytes, MaxInt); // could be much larger than [NetworkSizeLimit]
     const items = codec.unpackInt(false);
-    console.log("items: ", items);
     const results: Array<Result> = [];
     for (let i = 0; i < items; i++) {
       const [result, err] = Result.fromBytes(codec);
       if (err) {
         return [[], err];
       }
-      console.log("result: ", JSON.stringify(result, null, 2));
       results.push(result);
     }
     if (!codec.empty()) {

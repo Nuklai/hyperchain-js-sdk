@@ -107,18 +107,13 @@ export class StatefulBlock {
     );
     let codec = Codec.newReader(bytes, NETWORK_SIZE_LIMIT);
     block.size = bytes.length;
-    console.log("Unpacked block message size:", block.size);
 
     block.prnt = codec.unpackID(false);
-    console.log("Unpacked block message parent:", block.prnt.toString());
     block.tmstmp = codec.unpackInt64(false);
-    console.log("Unpacked block message timestamp:", block.tmstmp.toString());
     block.hght = codec.unpackUint64(false);
-    console.log("Unpacked block message height:", block.hght.toString());
 
     // Parse transactions
     const txCount = codec.unpackInt(false);
-    console.log("Unpacked block message tx count:", txCount.toString());
     block.authCounts = new Map<number, number>();
     for (let i = 0; i < txCount; i++) {
       const [tx, c] = Transaction.fromBytesCodec(
@@ -129,7 +124,6 @@ export class StatefulBlock {
       if (c.getError()) {
         return [block, c];
       }
-      console.log("tx:", JSON.stringify(tx, null, 2));
       codec = c;
       block.txs.push(tx);
       if (tx.auth) {
