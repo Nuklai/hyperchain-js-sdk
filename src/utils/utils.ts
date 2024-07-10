@@ -47,6 +47,12 @@ export function toAssetID(asset: string): Id {
   return asset.toUpperCase() === SYMBOL ? EMPTY_ID : Id.fromString(asset)
 }
 
+export function fromAssetID(asset: Id): string {
+  return bufferEquals(asset.toBytes(), EMPTY_ID.toBytes())
+    ? SYMBOL
+    : asset.toString()
+}
+
 export function isNodeEnvironment(): boolean {
   return (
     typeof process !== 'undefined' &&

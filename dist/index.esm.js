@@ -43203,6 +43203,9 @@ function bufferEquals(buf1, buf2) {
 function toAssetID(asset) {
   return asset.toUpperCase() === SYMBOL ? EMPTY_ID : Ve.fromString(asset);
 }
+function fromAssetID(asset) {
+  return bufferEquals(asset.toBytes(), EMPTY_ID.toBytes()) ? SYMBOL : asset.toString();
+}
 function isNodeEnvironment() {
   return typeof process !== "undefined" && process.versions != null && process.versions.node != null;
 }
@@ -43590,7 +43593,7 @@ var Transfer = class _Transfer {
   toJSON() {
     return {
       to: this.to.toString(),
-      asset: this.asset.toString(),
+      asset: fromAssetID(this.asset),
       value: this.value.toString(),
       memo: new TextDecoder().decode(this.memo)
     };
@@ -48648,6 +48651,7 @@ __export(utils_exports2, {
   bufferEquals: () => bufferEquals,
   createActionID: () => createActionID,
   formatBalance: () => formatBalance,
+  fromAssetID: () => fromAssetID,
   getUnixRMilli: () => getUnixRMilli,
   isBase64: () => isBase64,
   isHex: () => isHex,

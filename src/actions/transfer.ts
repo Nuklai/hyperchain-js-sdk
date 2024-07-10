@@ -12,7 +12,7 @@ import {
   TRANSFER_ID
 } from '../constants/hypervm'
 import { Address } from '../utils/address'
-import { toAssetID } from '../utils/utils'
+import { fromAssetID, toAssetID } from '../utils/utils'
 import { Action } from './action'
 
 export const TransferTxSize =
@@ -52,7 +52,7 @@ export class Transfer implements Action {
   toJSON(): object {
     return {
       to: this.to.toString(),
-      asset: this.asset.toString(),
+      asset: fromAssetID(this.asset),
       value: this.value.toString(),
       memo: new TextDecoder().decode(this.memo)
     }

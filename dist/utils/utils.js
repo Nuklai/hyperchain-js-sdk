@@ -34,6 +34,11 @@ export function bufferEquals(buf1, buf2) {
 export function toAssetID(asset) {
     return asset.toUpperCase() === SYMBOL ? EMPTY_ID : Id.fromString(asset);
 }
+export function fromAssetID(asset) {
+    return bufferEquals(asset.toBytes(), EMPTY_ID.toBytes())
+        ? SYMBOL
+        : asset.toString();
+}
 export function isNodeEnvironment() {
     return (typeof process !== 'undefined' &&
         process.versions != null &&

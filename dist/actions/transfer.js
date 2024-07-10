@@ -5,7 +5,7 @@ import { Codec } from '../codec/codec';
 import { ADDRESS_LEN, ID_LEN, INT_LEN, UINT64_LEN } from '../constants/consts';
 import { MAX_MEMO_SIZE, STORAGE_BALANCE_CHUNKS, TRANSFER_COMPUTE_UNITS, TRANSFER_ID } from '../constants/hypervm';
 import { Address } from '../utils/address';
-import { toAssetID } from '../utils/utils';
+import { fromAssetID, toAssetID } from '../utils/utils';
 export const TransferTxSize = ADDRESS_LEN + ID_LEN + UINT64_LEN + INT_LEN + MAX_MEMO_SIZE;
 export class Transfer {
     to;
@@ -35,7 +35,7 @@ export class Transfer {
     toJSON() {
         return {
             to: this.to.toString(),
-            asset: this.asset.toString(),
+            asset: fromAssetID(this.asset),
             value: this.value.toString(),
             memo: new TextDecoder().decode(this.memo)
         };
