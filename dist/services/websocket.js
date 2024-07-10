@@ -1,12 +1,12 @@
 // Copyright (C) 2024, Nuklai. All rights reserved.
 // See the file LICENSE for licensing terms.
-import { StatefulBlock } from "../chain/block";
-import { DimensionsLen, dimensionFromBytes } from "../chain/fees";
-import { Result } from "../chain/result";
-import { Codec } from "../codec/codec";
-import { MaxInt, MaxWriteMessageSize, NETWORK_SIZE_LIMIT } from "../constants/consts";
-import { WEBSOCKET_ENDPOINT } from "../constants/endpoints";
-import { MessageBuffer, parseBatchMessage } from "../pubsub/messageBuffer";
+import { StatefulBlock } from '../chain/block';
+import { DimensionsLen, dimensionFromBytes } from '../chain/fees';
+import { Result } from '../chain/result';
+import { Codec } from '../codec/codec';
+import { MaxInt, MaxWriteMessageSize, NETWORK_SIZE_LIMIT } from '../constants/consts';
+import { WEBSOCKET_ENDPOINT } from '../constants/endpoints';
+import { MessageBuffer, parseBatchMessage } from '../pubsub/messageBuffer';
 const BlockMode = 0;
 const TxMode = 1;
 export class WebSocketService {
@@ -25,10 +25,10 @@ export class WebSocketService {
         this.mb = new MessageBuffer(NETWORK_SIZE_LIMIT, 1000 * 10); // 10 second timeout
     }
     async connect() {
-        console.log("WebSocketService.connect called, connecting to:", this.uri);
+        console.debug('WebSocketService.connect called, connecting to:', this.uri);
         this.conn = new WebSocket(this.uri);
         this.conn.onopen = () => {
-            console.log("WebSocket connection opened");
+            console.debug('WebSocket connection opened');
             this.readLoop();
             this.writeLoop();
         };
@@ -37,17 +37,17 @@ export class WebSocketService {
             this.close();
         };
         this.conn.onclose = () => {
-            console.log("WebSocket connection closed");
+            console.debug('WebSocket connection closed');
             this.close();
         };
     }
     getWebSocketUri(apiUrl) {
-        let uri = apiUrl.replace(/http:\/\//g, "ws://");
-        uri = uri.replace(/https:\/\//g, "wss://");
-        if (!uri.startsWith("ws")) {
-            uri = "ws://" + uri;
+        let uri = apiUrl.replace(/http:\/\//g, 'ws://');
+        uri = uri.replace(/https:\/\//g, 'wss://');
+        if (!uri.startsWith('ws')) {
+            uri = 'ws://' + uri;
         }
-        uri = uri.replace(/\/$/, "");
+        uri = uri.replace(/\/$/, '');
         return uri;
     }
     async readLoop() {
@@ -89,7 +89,7 @@ export class WebSocketService {
                     const queue = await this.mb.getQueue();
                     for (const msg of queue) {
                         if (this.conn.readyState !== WebSocket.OPEN) {
-                            console.warn("Attempted to send message after connection closed");
+                            console.warn('Attempted to send message after connection closed');
                             return;
                         }
                         this.conn.send(msg);
@@ -109,14 +109,14 @@ export class WebSocketService {
     }
     async registerBlocks() {
         if (this.closed) {
-            return new Error("Connection is closed");
+            return new Error('Connection is closed');
         }
         const msg = new Uint8Array(1);
         msg.set([BlockMode], 0);
         return await this.mb.send(msg);
     }
     async listenBlock(actionRegistry, authRegistry) {
-        console.log("WebSocketService.listenBlock called");
+        console.debug('WebSocketService.listenBlock called');
         while (!this.readStopped) {
             const msg = this.pendingBlocks.shift();
             if (msg) {
@@ -128,9 +128,9 @@ export class WebSocketService {
         throw this.err;
     }
     async registerTx(tx) {
-        console.log("WebSocketService.registerTx called with transaction:", tx);
+        console.debug('WebSocketService.registerTx called with transaction:', tx);
         if (this.closed) {
-            return new Error("Connection is closed");
+            return new Error('Connection is closed');
         }
         const [txBytes, err] = tx.toBytes();
         if (err) {
@@ -142,7 +142,7 @@ export class WebSocketService {
         return await this.mb.send(msg);
     }
     async listenTx() {
-        console.log("WebSocketService.listenTx called");
+        console.debug('WebSocketService.listenTx called');
         while (!this.readStopped) {
             const msg = this.pendingTxs.shift();
             if (msg) {
@@ -154,7 +154,7 @@ export class WebSocketService {
         throw this.err;
     }
     async close() {
-        console.log("WebSocketService.close called");
+        console.debug('WebSocketService.close called');
         if (!this.startedClose) {
             this.startedClose = true;
             await this.mb.close(); // Ensure the message buffer is closed properly
@@ -183,7 +183,7 @@ export class WebSocketService {
             return Promise.reject(errMessage);
         }
         if (!codec.empty()) {
-            return Promise.reject(new Error("Invalid object"));
+            return Promise.reject(new Error('Invalid object'));
         }
         return Promise.resolve({ block, results, prices, err: undefined });
     }

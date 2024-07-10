@@ -14,6 +14,8 @@ export declare class ED25519 implements Auth {
     actor(): Address;
     sponsor(): Address;
     size(): number;
+    toJSON(): object;
+    toString(): string;
     toBytes(): Uint8Array;
     static fromBytes(bytes: Uint8Array): [ED25519, Error?];
     static fromBytesCodec(c: Codec): [ED25519, Codec];

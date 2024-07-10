@@ -27,6 +27,18 @@ export class BaseTx {
     return BaseTxSize
   }
 
+  toJSON(): object {
+    return {
+      timestamp: this.timestamp.toString(),
+      chainId: this.chainId.toString(),
+      maxFee: this.maxFee.toString()
+    }
+  }
+
+  toString(): string {
+    return JSON.stringify(this.toJSON())
+  }
+
   toBytes(): Uint8Array {
     const codec = Codec.newWriter(this.size(), this.size())
     codec.packInt64(this.timestamp)

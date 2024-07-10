@@ -15,6 +15,16 @@ export class BaseTx {
     size() {
         return BaseTxSize;
     }
+    toJSON() {
+        return {
+            timestamp: this.timestamp.toString(),
+            chainId: this.chainId.toString(),
+            maxFee: this.maxFee.toString()
+        };
+    }
+    toString() {
+        return JSON.stringify(this.toJSON());
+    }
     toBytes() {
         const codec = Codec.newWriter(this.size(), this.size());
         codec.packInt64(this.timestamp);

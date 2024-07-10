@@ -13,6 +13,8 @@ export declare class Transfer implements Action {
     size(): number;
     computeUnits(): number;
     stateKeysMaxChunks(): number[];
+    toJSON(): object;
+    toString(): string;
     toBytes(): Uint8Array;
     static fromBytes(bytes: Uint8Array): [Transfer, Error?];
     static fromBytesCodec(c: Codec): [Transfer, Codec];

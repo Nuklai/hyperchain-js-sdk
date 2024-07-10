@@ -6,6 +6,8 @@ export declare class BaseTx {
     maxFee: bigint;
     constructor(timestamp: bigint, chainId: Id, maxFee: bigint);
     size(): number;
+    toJSON(): object;
+    toString(): string;
     toBytes(): Uint8Array;
     static fromBytes(bytes: Uint8Array): [BaseTx, Error?];
 }

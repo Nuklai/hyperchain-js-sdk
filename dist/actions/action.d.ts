@@ -4,4 +4,6 @@ export interface Action {
     size(): number;
     computeUnits(): number;
     stateKeysMaxChunks(): number[];
+    toJSON(): object;
+    toString(): string;
 }

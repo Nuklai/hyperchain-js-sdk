@@ -52,6 +52,20 @@ export class BLS implements Auth {
     return BlsAuthSize
   }
 
+  toJSON(): object {
+    return {
+      signer: BLS.publicKeyToHex(this.signer),
+      signature: Buffer.from(bls.signatureToBytes(this.signature)).toString(
+        'hex'
+      ),
+      address: this.address().toString()
+    }
+  }
+
+  toString(): string {
+    return JSON.stringify(this.toJSON())
+  }
+
   toBytes(): Uint8Array {
     const size = this.size()
     const codec = Codec.newWriter(size, size)

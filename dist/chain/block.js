@@ -1,11 +1,11 @@
 // Copyright (C) 2024, Nuklai. All rights reserved.
 // See the file LICENSE for licensing terms.
-import { Id } from "@avalabs/avalanchejs";
-import { Codec } from "../codec/codec";
-import { cummSize } from "../codec/utils";
-import { EMPTY_ID, ID_LEN, NETWORK_SIZE_LIMIT, UINT64_LEN, WINDOW_ARRAY_SIZE } from "../constants/consts";
-import { ToID } from "../utils/hashing";
-import { Transaction } from "./transaction";
+import { Id } from '@avalabs/avalanchejs';
+import { Codec } from '../codec/codec';
+import { cummSize } from '../codec/utils';
+import { EMPTY_ID, ID_LEN, NETWORK_SIZE_LIMIT, UINT64_LEN, WINDOW_ARRAY_SIZE } from '../constants/consts';
+import { ToID } from '../utils/hashing';
+import { Transaction } from './transaction';
 export class StatefulBlock {
     prnt;
     tmstmp;
@@ -32,6 +32,20 @@ export class StatefulBlock {
             return EMPTY_ID;
         }
         return Id.fromBytes(ToID(blk))[0];
+    }
+    toJSON() {
+        return {
+            prnt: this.prnt.toString(),
+            tmstmp: this.tmstmp.toString(),
+            hght: this.hght.toString(),
+            txs: this.txs.map((tx) => tx.toJSON()),
+            stateRoot: this.stateRoot.toString(),
+            size: this.size,
+            authCounts: Array.from(this.authCounts.entries())
+        };
+    }
+    toString() {
+        return JSON.stringify(this.toJSON(), null, 2);
     }
     toBytes() {
         const size = ID_LEN +

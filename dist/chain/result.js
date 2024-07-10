@@ -1,9 +1,9 @@
 // Copyright (C) 2024, Nuklai. All rights reserved.
 // See the file LICENSE for licensing terms.
-import { DimensionsLen, dimensionFromBytes, dimensionToBytes } from "../chain/fees";
-import { Codec } from "../codec/codec";
-import { bytesLen, cummSize } from "../codec/utils";
-import { BOOL_LEN, INT_LEN, MaxInt, UINT64_LEN, UINT8_LEN } from "../constants/consts";
+import { DimensionsLen, dimensionFromBytes, dimensionToBytes } from '../chain/fees';
+import { Codec } from '../codec/codec';
+import { bytesLen, cummSize } from '../codec/utils';
+import { BOOL_LEN, INT_LEN, MaxInt, UINT64_LEN, UINT8_LEN } from '../constants/consts';
 export class Result {
     success;
     error;
@@ -26,6 +26,24 @@ export class Result {
             }
         }
         return (BOOL_LEN + bytesLen(this.error) + outputSize + DimensionsLen + UINT64_LEN);
+    }
+    toJSON() {
+        return {
+            success: this.success,
+            error: new TextDecoder().decode(this.error),
+            outputs: this.outputs.map((action) => action.map((output) => Array.from(output))),
+            units: {
+                Bandwidth: this.units[0],
+                Compute: this.units[1],
+                'Storage (Read)': this.units[2],
+                'Storage (Allocate)': this.units[3],
+                'Storage (Write)': this.units[4]
+            },
+            fee: this.fee.toString()
+        };
+    }
+    toString() {
+        return JSON.stringify(this.toJSON(), null, 2);
     }
     toBytes(codec) {
         const codecResult = codec;
@@ -85,7 +103,7 @@ export class Result {
             results.push(result);
         }
         if (!codec.empty()) {
-            throw new Error("Invalid object");
+            throw new Error('Invalid object');
         }
         return [results, codec.getError()];
     }

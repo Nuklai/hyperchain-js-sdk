@@ -14,6 +14,8 @@ export declare class BLS implements Auth {
     actor(): Address;
     sponsor(): Address;
     size(): number;
+    toJSON(): object;
+    toString(): string;
     toBytes(): Uint8Array;
     static fromBytes(bytes: Uint8Array): [BLS, Error?];
     static fromBytesCodec(c: Codec): [BLS, Codec];

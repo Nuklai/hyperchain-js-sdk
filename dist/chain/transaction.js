@@ -38,6 +38,16 @@ export class Transaction {
         }
         return Transaction.fromBytes(this.bytes, actionRegistry, authRegistry);
     }
+    toJSON() {
+        return {
+            base: this.base.toJSON(),
+            actions: this.actions.map((action) => action.toJSON()),
+            auth: this.auth ? this.auth.toJSON() : null
+        };
+    }
+    toString() {
+        return JSON.stringify(this.toJSON());
+    }
     toBytes() {
         if (this.bytes.length > 0) {
             return [this.bytes, undefined];

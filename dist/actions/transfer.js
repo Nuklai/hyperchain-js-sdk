@@ -32,6 +32,17 @@ export class Transfer {
     stateKeysMaxChunks() {
         return [STORAGE_BALANCE_CHUNKS, STORAGE_BALANCE_CHUNKS];
     }
+    toJSON() {
+        return {
+            to: this.to.toString(),
+            asset: this.asset.toString(),
+            value: this.value.toString(),
+            memo: new TextDecoder().decode(this.memo)
+        };
+    }
+    toString() {
+        return JSON.stringify(this.toJSON());
+    }
     toBytes() {
         const codec = Codec.newWriter(this.size(), this.size());
         codec.packAddress(this.to);

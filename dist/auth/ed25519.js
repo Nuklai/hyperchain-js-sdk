@@ -41,6 +41,16 @@ export class ED25519 {
     size() {
         return Ed25519AuthSize;
     }
+    toJSON() {
+        return {
+            signer: ED25519.publicKeyToHex(this.signer),
+            signature: Buffer.from(this.signature).toString('hex'),
+            addr: this.address().toString()
+        };
+    }
+    toString() {
+        return JSON.stringify(this.toJSON());
+    }
     toBytes() {
         const size = this.size();
         const codec = Codec.newWriter(size, size);

@@ -11,6 +11,8 @@ export interface Auth {
   sponsor(): Address
   size(): number
   toBytes(): Uint8Array
+  toJSON(): object
+  toString(): string
 }
 
 export interface AuthFactory {

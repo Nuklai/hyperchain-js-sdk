@@ -53,6 +53,18 @@ export class Transaction {
     return Transaction.fromBytes(this.bytes, actionRegistry, authRegistry)
   }
 
+  toJSON(): object {
+    return {
+      base: this.base.toJSON(),
+      actions: this.actions.map((action) => action.toJSON()),
+      auth: this.auth ? this.auth.toJSON() : null
+    }
+  }
+
+  toString(): string {
+    return JSON.stringify(this.toJSON())
+  }
+
   toBytes(): [Uint8Array, Error?] {
     if (this.bytes.length > 0) {
       return [this.bytes, undefined]

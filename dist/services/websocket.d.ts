@@ -1,10 +1,10 @@
-import { Id } from "@avalabs/avalanchejs";
-import { StatefulBlock } from "../chain/block";
-import { ActionRegistry, AuthRegistry } from "../chain/dependencies";
-import { Dimension } from "../chain/fees";
-import { Result } from "../chain/result";
-import { Transaction } from "../chain/transaction";
-import { NodeConfig } from "../config";
+import { Id } from '@avalabs/avalanchejs';
+import { StatefulBlock } from '../chain/block';
+import { ActionRegistry, AuthRegistry } from '../chain/dependencies';
+import { Dimension } from '../chain/fees';
+import { Result } from '../chain/result';
+import { Transaction } from '../chain/transaction';
+import { NodeConfig } from '../config';
 export declare class WebSocketService {
     uri: string;
     private conn;

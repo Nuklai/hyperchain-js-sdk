@@ -12,6 +12,8 @@ export declare class Transaction {
     constructor(base: BaseTx, actions: Action[]);
     calculateDigest(): [Uint8Array, Error?];
     sign(factory: AuthFactory, actionRegistry: ActionRegistry, authRegistry: AuthRegistry): [Transaction, Error?];
+    toJSON(): object;
+    toString(): string;
     toBytes(): [Uint8Array, Error?];
     static fromBytes(bytes: Uint8Array, actionRegistry: ActionRegistry, authRegistry: AuthRegistry): [Transaction, Error?];
     static fromBytesCodec(c: Codec, actionRegistry: ActionRegistry, authRegistry: AuthRegistry): [Transaction, Codec];

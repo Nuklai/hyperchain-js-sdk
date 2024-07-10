@@ -32965,6 +32965,17 @@ var Transfer = class _Transfer {
   stateKeysMaxChunks() {
     return [STORAGE_BALANCE_CHUNKS, STORAGE_BALANCE_CHUNKS];
   }
+  toJSON() {
+    return {
+      to: this.to.toString(),
+      asset: this.asset.toString(),
+      value: this.value.toString(),
+      memo: new TextDecoder().decode(this.memo)
+    };
+  }
+  toString() {
+    return JSON.stringify(this.toJSON());
+  }
   toBytes() {
     const codec = Codec.newWriter(this.size(), this.size());
     codec.packAddress(this.to);
@@ -35994,6 +36005,18 @@ var BLS = class _BLS {
   size() {
     return BlsAuthSize;
   }
+  toJSON() {
+    return {
+      signer: _BLS.publicKeyToHex(this.signer),
+      signature: import_buffer2.Buffer.from(ki.signatureToBytes(this.signature)).toString(
+        "hex"
+      ),
+      address: this.address().toString()
+    };
+  }
+  toString() {
+    return JSON.stringify(this.toJSON());
+  }
   toBytes() {
     const size = this.size();
     const codec = Codec.newWriter(size, size);
@@ -36583,6 +36606,16 @@ var ED25519 = class _ED25519 {
   size() {
     return Ed25519AuthSize;
   }
+  toJSON() {
+    return {
+      signer: _ED25519.publicKeyToHex(this.signer),
+      signature: import_buffer4.Buffer.from(this.signature).toString("hex"),
+      addr: this.address().toString()
+    };
+  }
+  toString() {
+    return JSON.stringify(this.toJSON());
+  }
   toBytes() {
     const size = this.size();
     const codec = Codec.newWriter(size, size);
@@ -36740,6 +36773,16 @@ var BaseTx = class _BaseTx {
   size() {
     return BaseTxSize;
   }
+  toJSON() {
+    return {
+      timestamp: this.timestamp.toString(),
+      chainId: this.chainId.toString(),
+      maxFee: this.maxFee.toString()
+    };
+  }
+  toString() {
+    return JSON.stringify(this.toJSON());
+  }
   toBytes() {
     const codec = Codec.newWriter(this.size(), this.size());
     codec.packInt64(this.timestamp);
@@ -36819,6 +36862,16 @@ var Transaction = class _Transaction {
       return [this, err2];
     }
     return _Transaction.fromBytes(this.bytes, actionRegistry, authRegistry);
+  }
+  toJSON() {
+    return {
+      base: this.base.toJSON(),
+      actions: this.actions.map((action) => action.toJSON()),
+      auth: this.auth ? this.auth.toJSON() : null
+    };
+  }
+  toString() {
+    return JSON.stringify(this.toJSON());
   }
   toBytes() {
     if (this.bytes.length > 0) {
@@ -36990,6 +37043,20 @@ var StatefulBlock = class _StatefulBlock {
     }
     return Ve.fromBytes(ToID(blk))[0];
   }
+  toJSON() {
+    return {
+      prnt: this.prnt.toString(),
+      tmstmp: this.tmstmp.toString(),
+      hght: this.hght.toString(),
+      txs: this.txs.map((tx) => tx.toJSON()),
+      stateRoot: this.stateRoot.toString(),
+      size: this.size,
+      authCounts: Array.from(this.authCounts.entries())
+    };
+  }
+  toString() {
+    return JSON.stringify(this.toJSON(), null, 2);
+  }
   toBytes() {
     const size = ID_LEN + UINT64_LEN + UINT64_LEN + UINT64_LEN + WINDOW_ARRAY_SIZE + cummSize(this.txs) + ID_LEN + UINT64_LEN + UINT64_LEN;
     const codec = Codec.newWriter(size, NETWORK_SIZE_LIMIT);
@@ -37157,6 +37224,26 @@ var Result = class _Result {
       }
     }
     return BOOL_LEN + bytesLen(this.error) + outputSize + DimensionsLen + UINT64_LEN;
+  }
+  toJSON() {
+    return {
+      success: this.success,
+      error: new TextDecoder().decode(this.error),
+      outputs: this.outputs.map(
+        (action) => action.map((output3) => Array.from(output3))
+      ),
+      units: {
+        Bandwidth: this.units[0],
+        Compute: this.units[1],
+        "Storage (Read)": this.units[2],
+        "Storage (Allocate)": this.units[3],
+        "Storage (Write)": this.units[4]
+      },
+      fee: this.fee.toString()
+    };
+  }
+  toString() {
+    return JSON.stringify(this.toJSON(), null, 2);
   }
   toBytes(codec) {
     const codecResult = codec;
@@ -37689,10 +37776,10 @@ var WebSocketService = class {
     this.mb = new MessageBuffer(NETWORK_SIZE_LIMIT, 1e3 * 10);
   }
   async connect() {
-    console.log("WebSocketService.connect called, connecting to:", this.uri);
+    console.debug("WebSocketService.connect called, connecting to:", this.uri);
     this.conn = new WebSocket(this.uri);
     this.conn.onopen = () => {
-      console.log("WebSocket connection opened");
+      console.debug("WebSocket connection opened");
       this.readLoop();
       this.writeLoop();
     };
@@ -37701,7 +37788,7 @@ var WebSocketService = class {
       this.close();
     };
     this.conn.onclose = () => {
-      console.log("WebSocket connection closed");
+      console.debug("WebSocket connection closed");
       this.close();
     };
   }
@@ -37775,7 +37862,7 @@ var WebSocketService = class {
     return await this.mb.send(msg);
   }
   async listenBlock(actionRegistry, authRegistry) {
-    console.log("WebSocketService.listenBlock called");
+    console.debug("WebSocketService.listenBlock called");
     while (!this.readStopped) {
       const msg = this.pendingBlocks.shift();
       if (msg) {
@@ -37786,7 +37873,7 @@ var WebSocketService = class {
     throw this.err;
   }
   async registerTx(tx) {
-    console.log("WebSocketService.registerTx called with transaction:", tx);
+    console.debug("WebSocketService.registerTx called with transaction:", tx);
     if (this.closed) {
       return new Error("Connection is closed");
     }
@@ -37800,7 +37887,7 @@ var WebSocketService = class {
     return await this.mb.send(msg);
   }
   async listenTx() {
-    console.log("WebSocketService.listenTx called");
+    console.debug("WebSocketService.listenTx called");
     while (!this.readStopped) {
       const msg = this.pendingTxs.shift();
       if (msg) {
@@ -37811,7 +37898,7 @@ var WebSocketService = class {
     throw this.err;
   }
   async close() {
-    console.log("WebSocketService.close called");
+    console.debug("WebSocketService.close called");
     if (!this.startedClose) {
       this.startedClose = true;
       await this.mb.close();

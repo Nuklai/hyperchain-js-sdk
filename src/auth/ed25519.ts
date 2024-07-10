@@ -62,6 +62,18 @@ export class ED25519 implements Auth {
     return Ed25519AuthSize
   }
 
+  toJSON(): object {
+    return {
+      signer: ED25519.publicKeyToHex(this.signer),
+      signature: Buffer.from(this.signature).toString('hex'),
+      addr: this.address().toString()
+    }
+  }
+
+  toString(): string {
+    return JSON.stringify(this.toJSON())
+  }
+
   toBytes(): Uint8Array {
     const size = this.size()
     const codec = Codec.newWriter(size, size)

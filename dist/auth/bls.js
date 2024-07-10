@@ -40,6 +40,16 @@ export class BLS {
     size() {
         return BlsAuthSize;
     }
+    toJSON() {
+        return {
+            signer: BLS.publicKeyToHex(this.signer),
+            signature: Buffer.from(bls.signatureToBytes(this.signature)).toString('hex'),
+            address: this.address().toString()
+        };
+    }
+    toString() {
+        return JSON.stringify(this.toJSON());
+    }
     toBytes() {
         const size = this.size();
         const codec = Codec.newWriter(size, size);

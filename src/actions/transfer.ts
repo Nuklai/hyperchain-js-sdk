@@ -49,6 +49,19 @@ export class Transfer implements Action {
     return [STORAGE_BALANCE_CHUNKS, STORAGE_BALANCE_CHUNKS]
   }
 
+  toJSON(): object {
+    return {
+      to: this.to.toString(),
+      asset: this.asset.toString(),
+      value: this.value.toString(),
+      memo: new TextDecoder().decode(this.memo)
+    }
+  }
+
+  toString(): string {
+    return JSON.stringify(this.toJSON())
+  }
+
   toBytes(): Uint8Array {
     const codec = Codec.newWriter(this.size(), this.size())
     codec.packAddress(this.to)
