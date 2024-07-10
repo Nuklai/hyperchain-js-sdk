@@ -191,6 +191,44 @@ while (!resultTxID) {
 console.log('Transaction ID:', txSigned.id().toString())
 ```
 
+### Listen for blocks(via Websocket)
+
+```js
+await sdk.wsService.connect()
+const connectAndListen = async () => {
+  try {
+    const err = await sdk.wsService.registerBlocks()
+    if (err) {
+      throw err
+    }
+    const listenBlocks = async () => {
+      const { block, results, err } = await sdk.wsService.listenBlock(
+        sdk.actionRegistry,
+        sdk.authRegistry
+      )
+      if (err) {
+        throw err
+      }
+      console.log('block: ', block.toJSON())
+      results.map((result, i) =>
+        console.log(`result at ${i}: ${result.toJSON()}`)
+      )
+    }
+    // Initial block fetch
+    listenBlocks()
+
+    // Fetch blocks periodically
+    const interval = setInterval(listenBlocks, 3000)
+
+    return () => clearInterval(interval)
+  } catch (err) {
+    console.error(err)
+  }
+}
+connectAndListen()
+await sdk.wsService.close()
+```
+
 ## Publish
 
 ```bash
