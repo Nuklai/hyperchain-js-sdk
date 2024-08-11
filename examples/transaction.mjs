@@ -12,7 +12,7 @@ import {
 
 const sdk = new HyperchainSDK({
   baseApiUrl: "http://api-devnet.nuklaivm-dev.net:9650",
-  blockchainId: "zepWp9PbeU9HLHebQ8gXkvxBYH5Bz4v8SoWXE6kyjjwNaMJfC"
+  blockchainId: "JopL8T69GBW1orW4ZkJ1TBRzF97KXaY8e64atDA1v2M12SNqm"
 });
 
 async function testSDK() {
