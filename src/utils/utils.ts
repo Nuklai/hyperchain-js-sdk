@@ -54,9 +54,14 @@ export function fromAssetID(asset: Id): string {
 }
 
 export function isNodeEnvironment(): boolean {
+  return typeof process !== 'undefined' && 
+         process.versions != null && 
+         process.versions.node != null &&
+         typeof window === 'undefined';
+}
+
+export function isBrowserEnvironment(): boolean {
   return (
-    typeof process !== 'undefined' &&
-    process.versions != null &&
-    process.versions.node != null
-  )
+    typeof window !== "undefined" && typeof window.document !== "undefined"
+  );
 }

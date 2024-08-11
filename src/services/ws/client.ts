@@ -6,21 +6,26 @@ import { isNodeEnvironment } from '../../utils/utils'
 let WebSocketClient: any
 
 export async function loadWebSocketClient() {
-  if (isNodeEnvironment()) {
-    // Node.js environment
-    const wsModule = await import('ws')
-    WebSocketClient = wsModule.default
-  } else {
+  if (typeof window !== 'undefined' && window.WebSocket) {
     // Browser environment
-    WebSocketClient = WebSocket
+    return window.WebSocket;
+  } else {
+    // Node.js environment
+    const wsModule = await import('ws');
+    return wsModule.default;
   }
 }
 
-export function getWebSocketClient() {
-  if (!WebSocketClient) {
-    throw new Error(
-      'WebSocket client is not initialized. Please call loadWebSocketClient() first.'
-    )
+export async function getWebSocketClient() {
+  if (typeof WebSocket !== 'undefined') {
+    // Browser environment
+    return WebSocket;
+  } else {
+    // Node.js environment
+    if (!WebSocketClient) {
+      const wsModule = await import('ws');
+      WebSocketClient = wsModule.default;
+    }
+    return WebSocketClient;
   }
-  return WebSocketClient
 }

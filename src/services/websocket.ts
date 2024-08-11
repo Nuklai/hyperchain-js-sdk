@@ -16,13 +16,14 @@ import {
 } from '../constants/consts'
 import { WEBSOCKET_ENDPOINT } from '../constants/endpoints'
 import { MessageBuffer, parseBatchMessage } from '../pubsub/messageBuffer'
+import { getWebSocketClient } from './ws/client';
 
 const BlockMode = 0
 const TxMode = 1
 
 export class WebSocketService {
   public uri: string
-  private conn!: WebSocket
+  private conn!: any
   private mb: MessageBuffer
   private readStopped: boolean = false
   private writeStopped: boolean = false
@@ -41,15 +42,17 @@ export class WebSocketService {
 
   async connect() {
     console.debug('WebSocketService.connect called, connecting to:', this.uri)
-    this.conn = new WebSocket(this.uri)
+    const WebSocketClass = await getWebSocketClient();
+    this.conn = new WebSocketClass(this.uri);
+
     this.conn.onopen = () => {
       console.debug('WebSocket connection opened')
       this.readLoop()
       this.writeLoop()
     }
 
-    this.conn.onerror = (event) => {
-      this.err = new Error(`WebSocket error: ${event}`)
+    this.conn.onerror = (event: any) => {
+      this.err = new Error(`WebSocket error: ${event.message}`)
       this.close()
     }
 
@@ -71,11 +74,15 @@ export class WebSocketService {
 
   private async readLoop() {
     try {
-      while (this.conn.readyState === WebSocket.OPEN) {
-        const event = await new Promise<MessageEvent>(
-          (resolve) => (this.conn.onmessage = resolve)
-        )
-        const msgBatch = new Uint8Array(await event.data.arrayBuffer()) // Adjusted for data type
+      while (this.conn.readyState === this.conn.OPEN) {
+        const event = await new Promise<any>((resolve) => (this.conn.onmessage = resolve));
+        
+        // If Node.js env, event.data will be a Buffer
+        const msgBatch =
+          event.data instanceof Buffer
+            ? new Uint8Array(event.data)
+            : new Uint8Array(await event.data.arrayBuffer());
+  
         if (msgBatch.length === 0) {
           continue
         }
@@ -103,11 +110,11 @@ export class WebSocketService {
 
   private async writeLoop() {
     try {
-      while (this.conn.readyState === WebSocket.OPEN && !this.writeStopped) {
+      while (this.conn.readyState === this.conn.OPEN && !this.writeStopped) {
         if (await this.mb.hasMessages()) {
           const queue = await this.mb.getQueue()
           for (const msg of queue) {
-            if (this.conn.readyState !== WebSocket.OPEN) {
+            if (this.conn.readyState !== this.conn.OPEN) {
               console.warn('Attempted to send message after connection closed')
               return
             }
@@ -193,7 +200,7 @@ export class WebSocketService {
     if (!this.startedClose) {
       this.startedClose = true
       await this.mb.close() // Ensure the message buffer is closed properly
-      if (this.conn.readyState === WebSocket.OPEN) {
+      if (this.conn.readyState === this.conn.OPEN) {
         this.conn.close()
       }
       this.closed = true

@@ -12,33 +12,28 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const commonOptions = {
-  entryPoints: ["./src/index.ts"],
   bundle: true,
   sourcemap: true,
   target: "esnext",
   define: {
-    "process.env.NODE_ENV": JSON.stringify("production")
+    "process.env.NODE_ENV": JSON.stringify("production"),
+    global: "globalThis",
   },
   inject: ["./polyfills.js"],
-  outdir: "dist"
 };
 
 const builds = [
   {
     ...commonOptions,
+    entryPoints: ["./src/index.ts"],
     platform: "browser",
     format: "esm",
-    entryNames: "[name].esm",
+    outfile: "dist/index.esm.js",
+    external: ['ws'],
     plugins: [
       alias({
-        crypto: path.resolve(
-          __dirname,
-          "node_modules/crypto-browserify/index.js"
-        ),
-        stream: path.resolve(
-          __dirname,
-          "node_modules/stream-browserify/index.js"
-        ),
+        crypto: path.resolve(__dirname, "node_modules/crypto-browserify/index.js"),
+        stream: path.resolve(__dirname, "node_modules/stream-browserify/index.js"),
         buffer: path.resolve(__dirname, "node_modules/buffer/index.js"),
         zlib: path.resolve(__dirname, "node_modules/browserify-zlib/index.js"),
         util: path.resolve(__dirname, "node_modules/util/util.js"),
@@ -50,9 +45,11 @@ const builds = [
   },
   {
     ...commonOptions,
+    entryPoints: ["./src/index.ts"],
     platform: "node",
     format: "cjs",
-    entryNames: "[name].cjs"
+    outfile: "dist/index.cjs.js",
+    external: ['ws'] 
   }
 ];
 
