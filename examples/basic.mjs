@@ -4,7 +4,7 @@
 import { HyperchainSDK } from '../dist/index.esm.js'
 
 const sdk = new HyperchainSDK({
-  baseApiUrl: 'http://api-devnet.nuklaivm-dev.net:9650',
+  baseApiUrl: 'https://api-devnet.nuklaivm-dev.net:9650',
   blockchainId: 'JopL8T69GBW1orW4ZkJ1TBRzF97KXaY8e64atDA1v2M12SNqm'
 })
 

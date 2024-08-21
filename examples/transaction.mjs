@@ -8,40 +8,40 @@ import {
   codec,
   consts,
   utils
-} from "../dist/index.esm.js";
+} from '../dist/index.esm.js'
 
 const sdk = new HyperchainSDK({
-  baseApiUrl: "http://api-devnet.nuklaivm-dev.net:9650",
-  blockchainId: "JopL8T69GBW1orW4ZkJ1TBRzF97KXaY8e64atDA1v2M12SNqm"
-});
+  baseApiUrl: 'https://api-devnet.nuklaivm-dev.net:9650',
+  blockchainId: 'JopL8T69GBW1orW4ZkJ1TBRzF97KXaY8e64atDA1v2M12SNqm'
+})
 
 async function testSDK() {
-  console.log("Starting SDK tests...");
+  console.log('Starting SDK tests...')
 
   // Testing Health Status
   try {
-    console.log("Fetching Health Status...");
-    const healthStatus = await sdk.rpcService.ping();
-    console.log("Node Ping:", JSON.stringify(healthStatus, null, 2));
+    console.log('Fetching Health Status...')
+    const healthStatus = await sdk.rpcService.ping()
+    console.log('Node Ping:', JSON.stringify(healthStatus, null, 2))
   } catch (error) {
-    console.error("Failed to fetch Health Status:", error);
+    console.error('Failed to fetch Health Status:', error)
   }
 
   // Testing NAI Transfer with Ed25519 Keytype
   try {
-    console.log("Creating Transfer Transaction...");
+    console.log('Creating Transfer Transaction...')
     // Set the private key for the sender address
     const authFactory = auth.getAuthFactory(
-      "ed25519",
-      "323b1d8f4eed5f0da9da93071b034f2dce9d2d22692c172f3cb252a64ddfafd01b057de320297c29ad0c1f589ea216869cf1938d88c9fbd70d6748323dbf2fa7" // private key (as hex string) for nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-    );
+      'ed25519',
+      '323b1d8f4eed5f0da9da93071b034f2dce9d2d22692c172f3cb252a64ddfafd01b057de320297c29ad0c1f589ea216869cf1938d88c9fbd70d6748323dbf2fa7' // private key (as hex string) for nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+    )
 
     const transfer = new actions.Transfer(
-      "nuklai1qpxncu2a69l9wyz3yqg4fqn86ys2ll6ja7vhym5qn2vk4cdyvgj2vn4k7wz", // receiver address
-      "NAI", // asset ID
+      'nuklai1qpxncu2a69l9wyz3yqg4fqn86ys2ll6ja7vhym5qn2vk4cdyvgj2vn4k7wz', // receiver address
+      'NAI', // asset ID
       utils.parseBalance(0.0001, 9), // amount
-      "Test Memo" // memo
-    );
+      'Test Memo' // memo
+    )
 
     const genesisInfo = {
       baseUnits: 1,
@@ -52,21 +52,17 @@ async function testSDK() {
       storageKeyWriteUnits: 10,
       storageValueWriteUnits: 3,
       validityWindow: 60000
-    };
+    }
 
-    const actionRegistry = new codec.TypeParser();
+    const actionRegistry = new codec.TypeParser()
     actionRegistry.register(
       consts.TRANSFER_ID,
       actions.Transfer.fromBytesCodec,
       false
-    );
-    const authRegistry = new codec.TypeParser();
-    authRegistry.register(consts.BLS_ID, auth.BLS.fromBytesCodec, false);
-    authRegistry.register(
-      consts.ED25519_ID,
-      auth.ED25519.fromBytesCodec,
-      false
-    );
+    )
+    const authRegistry = new codec.TypeParser()
+    authRegistry.register(consts.BLS_ID, auth.BLS.fromBytesCodec, false)
+    authRegistry.register(consts.ED25519_ID, auth.ED25519.fromBytesCodec, false)
 
     const { submit, txSigned, err } = await sdk.rpcService.generateTransaction(
       genesisInfo,
@@ -74,16 +70,16 @@ async function testSDK() {
       authRegistry,
       [transfer],
       authFactory
-    );
+    )
     if (err) {
-      throw err;
+      throw err
     }
 
-    await submit();
-    console.log("Transaction ID:", txSigned.id().toString());
+    await submit()
+    console.log('Transaction ID:', txSigned.id().toString())
   } catch (error) {
-    console.error("Failed to transfer crypto:", error);
+    console.error('Failed to transfer crypto:', error)
   }
 }
 
-testSDK();
+testSDK()
