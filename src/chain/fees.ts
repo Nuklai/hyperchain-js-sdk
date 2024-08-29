@@ -53,9 +53,9 @@ export function mulSum(a: Dimension, b: Dimension): [bigint, Error?] {
 }
 
 export function estimateUnits(
-  genesisInfo: Genesis,
-  actions: Action[],
-  authFactory: AuthFactory
+    genesisInfo: Genesis,
+    actions: Action[],
+    authFactory: AuthFactory
 ): Dimension {
   let bandwidth = BaseTxSize
   let stateKeysMaxChunks = [] as number[]
@@ -70,39 +70,39 @@ export function estimateUnits(
     bandwidth += BYTE_LEN + action.size()
     const actionStateKeysMaxChunks = action.stateKeysMaxChunks()
     stateKeysMaxChunks = [...stateKeysMaxChunks, ...actionStateKeysMaxChunks]
-    computeOp = computeOp.add(action.computeUnits())
+    computeOp = computeOp.add(bigInt(action.computeUnits()))
   })
 
   bandwidth += BYTE_LEN + authFactory.bandwidth()
   const sponsorStateKeyMaxChunks = [STORAGE_BALANCE_CHUNKS]
   stateKeysMaxChunks = [...stateKeysMaxChunks, ...sponsorStateKeyMaxChunks]
-  computeOp = computeOp.add(authFactory.computeUnits())
+  computeOp = computeOp.add(bigInt(authFactory.computeUnits()))
 
   // Estimate compute costs
-  const compute = computeOp.valueOf()
+  const compute = computeOp.toJSNumber()
 
   // Estimate storage costs
   for (const maxChunks of stateKeysMaxChunks) {
     // Compute key costs
-    readsOp = readsOp.add(genesisInfo.storageKeyReadUnits)
-    allocatesOp = allocatesOp.add(genesisInfo.storageKeyAllocateUnits)
-    writesOp = writesOp.add(genesisInfo.storageKeyWriteUnits)
+    readsOp = readsOp.add(bigInt(genesisInfo.storageKeyReadUnits))
+    allocatesOp = allocatesOp.add(bigInt(genesisInfo.storageKeyAllocateUnits))
+    writesOp = writesOp.add(bigInt(genesisInfo.storageKeyWriteUnits))
 
     // Compute value costs
     readsOp = readsOp.add(
-      bigInt(maxChunks).multiply(bigInt(genesisInfo.storageValueReadUnits))
+        bigInt(maxChunks).multiply(bigInt(genesisInfo.storageValueReadUnits))
     )
     allocatesOp = allocatesOp.add(
-      bigInt(maxChunks).multiply(bigInt(genesisInfo.storageValueAllocateUnits))
+        bigInt(maxChunks).multiply(bigInt(genesisInfo.storageValueAllocateUnits))
     )
     writesOp = writesOp.add(
-      bigInt(maxChunks).multiply(bigInt(genesisInfo.storageValueWriteUnits))
+        bigInt(maxChunks).multiply(bigInt(genesisInfo.storageValueWriteUnits))
     )
   }
 
-  const reads = readsOp.valueOf()
-  const allocates = allocatesOp.valueOf()
-  const writes = writesOp.valueOf()
+  const reads = readsOp.toJSNumber()
+  const allocates = allocatesOp.toJSNumber()
+  const writes = writesOp.toJSNumber()
 
   return [bandwidth, compute, reads, allocates, writes] as Dimension
 }
