@@ -7,11 +7,7 @@ import {
   verify as ed25519Verify,
   etc
 } from '@noble/ed25519'
-import { createHash as nodeCreateHash } from 'crypto'
-import { createHash as browserCreateHash } from 'crypto-browserify'
-import { isNodeEnvironment } from '../utils/utils'
-
-const createHash = isNodeEnvironment() ? nodeCreateHash : browserCreateHash
+import { getSha512 } from '../utils/cryptoUtils'
 
 export type PublicKey = Uint8Array
 export type SecretKey = Uint8Array
@@ -61,10 +57,4 @@ export function sign(msg: Uint8Array | string, sk: SecretKey): Uint8Array {
 }
 
 // Set the synchronous SHA-512 function
-etc.sha512Sync = (...messages: Uint8Array[]): Uint8Array => {
-  const hash = createHash('sha512')
-  for (const message of messages) {
-    hash.update(message)
-  }
-  return new Uint8Array(hash.digest())
-}
+etc.sha512Sync = getSha512();

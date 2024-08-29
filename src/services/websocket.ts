@@ -4,7 +4,7 @@
 import { Id } from '@avalabs/avalanchejs'
 import { StatefulBlock } from '../chain/block'
 import { ActionRegistry, AuthRegistry } from '../chain/dependencies'
-import { Dimension, DimensionsLen, dimensionFromBytes } from '../chain/fees'
+import { Dimension, DimensionsLen, dimensionFromBytes } from '../chain'
 import { Result } from '../chain/result'
 import { Transaction } from '../chain/transaction'
 import { Codec } from '../codec/codec'

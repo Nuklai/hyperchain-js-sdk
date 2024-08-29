@@ -2,12 +2,10 @@
 // See the file LICENSE for licensing terms.
 
 import { Id } from '@avalabs/avalanchejs'
-import { createHash as nodeCreateHash } from 'crypto'
-import { createHash as browserCreateHash } from 'crypto-browserify'
 import { ID_LEN, UINT8_LEN } from '../constants/consts'
-import { isNodeEnvironment } from './utils'
+import { getCreateHash } from './cryptoUtils'
 
-const createHash = isNodeEnvironment() ? nodeCreateHash : browserCreateHash
+const createHash = getCreateHash();
 
 const HashLen = 32 // sha256 hash length in bytes
 
