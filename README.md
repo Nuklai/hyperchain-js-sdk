@@ -43,6 +43,12 @@ yarn
 yarn build
 ```
 
+## Publish
+
+```bash
+npm publish --access public
+```
+
 ## Usage
 
 ### Initializing the SDK
@@ -195,6 +201,10 @@ async function listenForBlocks() {
 
 listenForBlocks().catch(console.error)
 ```
+
+## Examples
+
+The [examples directory](https://github.com/Nuklai/hyperchain-js-sdk/tree/main/examples) contains various example code to interact with the Hyperchain SDK.
 
 ## API Reference
 
