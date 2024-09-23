@@ -43,3 +43,13 @@ export function getSha512() {
         return hash.digest();
     };
 }
+
+export function getSha256() {
+    return (...messages: Uint8Array[]): Uint8Array => {
+        const hash = createHash("sha256");
+        for (const message of messages) {
+            hash.update(message);
+        }
+        return hash.digest();
+    };
+}
