@@ -104,10 +104,10 @@ export class SECP256R1Factory implements AuthFactory {
         return SECP256R1AuthSize
     }
 
-    static async generateKeyPair(): Promise<{
+    static generateKeyPair(): {
         privateKey: secp256r1Crypto.SecretKey
         publicKey: secp256r1Crypto.PublicKey
-    }> {
+    } {
         const privateKey = randomBytes(secp256r1Crypto.PRIVATE_KEY_LENGTH)
         const publicKey = secp256r1Crypto.getPublicKey(privateKey)
         return { privateKey, publicKey }
