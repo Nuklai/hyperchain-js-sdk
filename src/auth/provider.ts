@@ -2,14 +2,15 @@
 // See the file LICENSE for licensing terms.
 
 import { bls } from "@avalabs/avalanchejs";
-import { base64ToUint8Array, isBase64 } from "../utils/base64";
-import { isHex } from "../utils/hex";
+import { base64ToUint8Array, isBase64 } from "../utils";
+import { isHex } from "../utils";
 import { Auth, AuthFactory } from "./auth";
 import { BLS, BLSFactory } from "./bls";
 import { ED25519, ED25519Factory } from "./ed25519";
+import { SECP256R1, SECP256R1Factory } from "./secp256r1";
 import { Buffer } from "buffer";
 
-export type AuthType = "bls" | "ed25519";
+export type AuthType = "bls" | "ed25519" | "secp256r1";
 
 function decodePrivateKey(privateKey: string): Uint8Array {
   if (isHex(privateKey)) {
@@ -34,6 +35,9 @@ export function getAuthFactory(
   } else if (authType === "ed25519") {
     const privateKey = ED25519Factory.hexToPrivateKey(privateKeyHex);
     return new ED25519Factory(privateKey);
+  } else if (authType === "secp256r1") {
+      const privateKey = SECP256R1Factory.hexToPrivateKey(privateKeyHex);
+      return new SECP256R1Factory(privateKey);
   } else {
     throw new Error("Unsupported key type");
   }
@@ -51,6 +55,8 @@ export function getAuth(
     );
   } else if (authType === "ed25519") {
     return new ED25519(signer, signature);
+  } else if (authType === "secp256r1") {
+      return new SECP256R1(signer, signature);
   } else {
     throw new Error("Unsupported key type");
   }
