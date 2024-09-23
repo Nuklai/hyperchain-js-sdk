@@ -135,6 +135,7 @@ actionRegistry.register(consts.TRANSFER_ID, actions.Transfer.fromBytesCodec, fal
 const authRegistry = new codec.TypeParser()
 authRegistry.register(consts.BLS_ID, auth.BLS.fromBytesCodec, false)
 authRegistry.register(consts.ED25519_ID, auth.ED25519.fromBytesCodec, false)
+authRegistry.register(consts.SECP256R1_ID, auth.SECP256R1.fromBytesCodec, false)
 
 // Generate and submit transaction
 const { submit, txSigned, err } = await sdk.rpcService.generateTransaction(
